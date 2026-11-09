@@ -62,8 +62,16 @@ Preis 12,90 €, abzüglich ca. 6,5 % Etsy-Transaktionsgebühr, ca. 4 % Zahlungs
 
 ## Dateien
 
-- `produkt/Finanzplaner_2027.xlsx`: **das Produkt** mit 7 Blättern, Dropdowns, Ampel, Diagrammen, Sparzielen und Schuldenfrei-Rechner
-- `tools/build_finanzplaner.py`: erzeugt den Planer neu (z. B. für 2028 `JAHR` ändern und `python tools/build_finanzplaner.py` ausführen)
+**👉 Start hier: `DEINE-TODOS.md`** mit allem, was du jetzt tun musst, und den Texten zum Reinkopieren.
+
+- `produkt/Finanzplaner_2027.xlsx`: **Produkt 1** mit 7 Blättern, Dropdowns, Ampel, Diagrammen, Sparzielen und Schuldenfrei-Rechner
+- `produkt/Paar-Haushaltsbuch_2027.xlsx`: **Produkt 2**, rechnet aus, wer wem wie viel überweisen muss (50/50 oder nach Einkommen)
+- `produkt/Finanzplaner_2027_LITE_gratis.xlsx`: kostenlose Basis-Version als Köder (Pinterest, Reddit, Bio-Link)
+- `marketing/bilder/`: 8 Etsy-Bilder (2000×2000) und 1 Pinterest-Pin (1000×1500)
+- `marketing/videos/`: 5 fertige TikTok-, Reels- und Shorts-Videos (1080×1920, je ca. 10 s)
+- `tools/build_finanzplaner.py`: erzeugt den Planer neu (für 2028 `JAHR` ändern; `--lite` erzeugt die Gratis-Version)
+- `tools/build_paare.py`: erzeugt das Paar-Haushaltsbuch neu
+- `tools/media/`: erzeugt Bilder und Videos neu (`python make_pages.py && node shoot.js && ./make_videos.sh`)
 - `marketing/etsy-listing.md`: Titel, 13 Tags, Beschreibung und Preisstrategie
 - `marketing/tiktok-30-tage.md`: 30 Video-Ideen mit Hooks, Ablauf und Hashtags
 - `marketing/weitere-ideen.md`: Plan B/C und Produktideen zum Skalieren

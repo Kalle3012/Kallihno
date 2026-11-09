@@ -237,5 +237,32 @@ for s in wb.worksheets:
                 c.font = Font(name=F, bold=c.font.bold, italic=c.font.italic, size=c.font.size, color=c.font.color)
 
 import sys
-out = sys.argv[1] if len(sys.argv) > 1 else "produkt/Finanzplaner_2027.xlsx"
+LITE = "--lite" in sys.argv
+args = [a for a in sys.argv[1:] if a != "--lite"]
+if LITE:
+    # Kostenlose Lite-Version (Lead-Magnet): nur Buchungen + Jahresübersicht
+    for name in ("Budget", "Sparziele", "Schuldenfrei"):
+        wb.remove(wb[name])
+    ws = wb["Start"]
+    for r in range(1, 30):
+        ws.cell(row=r, column=1).value = None
+    title(ws, f"Finanzplaner {JAHR} – LITE (kostenlos)", "Die Basis-Version. Viel Spaß beim Ausprobieren!")
+    lite = [
+        "SO FUNKTIONIERT'S",
+        "1. Blatt 'Einstellungen': Startguthaben und Kategorien eintragen (gelbe Felder).",
+        "2. Blatt 'Buchungen': Jede Einnahme/Ausgabe als Zeile eintragen (Beträge positiv).",
+        "3. Blatt 'Jahresübersicht': Rechnet automatisch – inkl. Diagrammen.",
+        "",
+        "DU WILLST MEHR?",
+        "Die Vollversion enthält zusätzlich:",
+        "   ✔ Monatsbudget mit Ampel (sieh sofort, wo du drüber bist)",
+        "   ✔ Sparziele mit Fortschrittsbalken und automatischer Monatsrate",
+        "   ✔ Schuldenfrei-Rechner (auf den Monat genau)",
+        "→ Link zur Vollversion: [HIER DEINEN ETSY-LINK EINFÜGEN]",
+    ]
+    for i, t in enumerate(lite, start=4):
+        c = ws.cell(row=i, column=1, value=t)
+        c.font = Font(name=F, bold=t.isupper() and t != "" or t.startswith("→"), size=11,
+                      color=GRUEN if (t.isupper() or t.startswith("→")) else "222222")
+out = args[0] if args else ("produkt/Finanzplaner_2027_LITE_gratis.xlsx" if LITE else "produkt/Finanzplaner_2027.xlsx")
 wb.save(out); print("gespeichert:", out)
