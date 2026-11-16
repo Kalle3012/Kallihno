@@ -112,6 +112,23 @@
   }
   .banner.rush { background: linear-gradient(135deg, #f97316, #facc15); color: #1c1917; }
   .banner.quiz { background: linear-gradient(135deg, #6366f1, #a855f7); }
+  .banner.abstimmung { background: linear-gradient(135deg, #0ea5e9, #6366f1); }
+  .option { position: relative; display: grid; grid-template-columns: 1.6em 1fr auto; align-items: center; gap: .5em;
+    margin-top: calc(var(--u) * .7); padding: calc(var(--u) * .5) calc(var(--u) * 1); border-radius: 999px; background: rgba(255,255,255,.18); overflow: hidden; }
+  .option b { display: grid; place-items: center; width: 1.5em; height: 1.5em; border-radius: 50%; background: #fff; color: #4338ca; z-index: 1; }
+  .option span, .option em { z-index: 1; font-style: normal; }
+  .option i { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255,255,255,.28); transition: width .4s; }
+  .hinweis-klein { margin-top: calc(var(--u) * .7); font-size: .8em; opacity: .9; }
+  .fanfare { position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;
+    padding: calc(var(--u) * 2) calc(var(--u) * 3.2); border-radius: calc(var(--u) * 3); background: rgba(15,23,42,.78);
+    border: 1px solid rgba(255,255,255,.2); backdrop-filter: blur(12px); box-shadow: 0 20px 60px rgba(0,0,0,.4);
+    animation: fanfare 6.5s ease forwards; max-width: 92vw; }
+  .fanfare .f1 { font-weight: 800; font-size: calc(var(--u) * 2.4); opacity: .9; }
+  .fanfare .f2 { font-family: Outfit, Inter, sans-serif; font-weight: 900; font-size: calc(var(--u) * 6); line-height: 1.05;
+    background: linear-gradient(135deg, #fde68a, #f59e0b, #ec4899); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .fanfare .f3 { font-weight: 700; font-size: calc(var(--u) * 1.9); margin-top: calc(var(--u) * .8); opacity: .9; }
+  @keyframes fanfare { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.6); } 8% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+    12% { transform: translate(-50%, -50%) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(.96); } }
   .banner.gewonnen { background: linear-gradient(135deg, #10b981, #22d3ee); color: #052e2b; }
   .banner .titel { font-family: Outfit, Inter, sans-serif; font-weight: 900; font-size: calc(var(--u) * 2.4); display: flex; justify-content: space-between; gap: 1em; white-space: nowrap; }
   .banner .text { font-size: calc(var(--u) * 1.9); margin-top: calc(var(--u) * 0.5); line-height: 1.3; }
@@ -183,7 +200,7 @@
   <div class="marke">
     <div class="logo">🏡</div>
     <div style="min-width:0">
-      <h1>Zuschauer-Stadt</h1>
+      <h1 id="stadtName">Zuschauer-Stadt</h1>
       <small id="untertitel">Jeder Kommentar baut mit</small>
     </div>
   </div>
@@ -233,9 +250,11 @@
     <span>💬 <b>Schreiben</b> = bauen</span>
     <span>❤️ Folgen <b>+5</b></span>
     <span>🎁 Geschenke = <b>Turbo</b></span>
-    <span><b>!haus</b> · <b>!top</b> · <b>!farbe pink</b></span>
+    <span><b>!haus</b> · <b>!stadt</b> · <b>!farbe pink</b></span>
   </div>
 </div>
+
+<div class="fanfare versteckt" id="fanfare"><div class="f1"></div><div class="f2"></div><div class="f3"></div></div>
 
 <button class="ton versteckt" id="tonKnopf">🔊 Ton an</button>
 
@@ -260,6 +279,14 @@ const welteffekte = [];       // Konfetti, Staub, Texte (Weltkoordinaten)
 const himmelseffekte = [];    // Feuerwerk (Bildschirmkoordinaten)
 let spot = null;              // Kamera-Spotlight { id, bis }
 let bannerErgebnis = null;    // { text, gewonnen, bis }
+const sonderSchilder = [];    // Rathaus und Wahrzeichen
+const wahrzeichenStart = {};  // art -> Zeitpunkt, an dem es gebaut wurde (für die Bau-Animation)
+function wahrzeichenWachsen(art) {
+  const t0 = wahrzeichenStart[art];
+  if (!t0) return 1;
+  const w = Math.min(1, (performance.now() - t0) / 1200);
+  return (1 - Math.pow(1 - w, 3)) + Math.sin(w * Math.PI) * 0.1;
+}
 
 // ============================================================ Verbindung zum Programm
 function verbinden() {
@@ -270,6 +297,7 @@ function verbinden() {
       STUFEN = m.stufen;
       document.getElementById('wer').textContent = m.moderator.name;
       zeigeStats(m.stats); zeigeSpiel(m.spiel);
+      if (m.stadt) zeigeStadt(m.stadt);
       if (KATALOG) return katalogZeigen();
       leute.clear(); anim.clear();
       for (const b of m.einwohner) { leute.set(b.id, b); anim.set(b.id, neueAnim(b, true)); }
@@ -280,6 +308,15 @@ function verbinden() {
     else if (m.t === 'bewohner') bewohnerUpdate(m);
     else if (m.t === 'sprich') sprechen(m);
     else if (m.t === 'feuerwerk') feuerwerk(m.staerke || 1);
+    else if (m.t === 'stadt') zeigeStadt(m.stadt);
+    else if (m.t === 'stadtAufstieg') { zeigeStadt(m.stadt); fanfare(`🏙️ Wir sind jetzt ${m.stadt.artikel || 'eine'}`, m.stadt.stufenName, 'Neu: ' + m.stadt.neu); spot = { ort: [1.5, 1.5], bis: performance.now() + 4500 }; }
+    else if (m.t === 'wahrzeichen') {
+      wahrzeichenStart[m.art] = performance.now();
+      const i = STADT.wahrzeichen.includes(m.art) ? STADT.wahrzeichen.indexOf(m.art) : STADT.wahrzeichen.length;
+      const ort = MITTE[i + 1] || MITTE[1];
+      fanfare('🏗️ Neues Wahrzeichen', m.name, m.stimmen ? 'Ihr habt abgestimmt!' : '');
+      spot = { ort, bis: performance.now() + 5000 };
+    }
     else if (m.t === 'quizEnde') {
       bannerErgebnis = { text: m.gewinner ? `✅ ${m.gewinner} wusste es: ${m.antwort}` : `Die Antwort war: ${m.antwort}`, gewonnen: !!m.gewinner, bis: Date.now() + 6000 };
       if (m.gewinner) feuerwerk(1);
@@ -298,7 +335,30 @@ function zeigeStats(s) {
   const st = { live: 'LIVE', demo: 'DEMO', wartet: 'wartet', verbinde: 'verbinde', getrennt: 'getrennt', beendet: 'Ende', fehler: 'Fehler', startet: '…' };
   document.getElementById('zStatus').textContent = st[s.status] || s.status;
   document.getElementById('livePunkt').classList.toggle('live', s.status === 'live' || s.status === 'demo');
-  if (s.streamer && s.streamer !== 'demo') document.getElementById('untertitel').textContent = '@' + s.streamer + ' · jeder Kommentar baut mit';
+  zuschauerJetzt = s.zuschauer || 0;
+}
+function zeigeStadt(st) {
+  const vorher = STADT.stufe;
+  STADT = { ...st };
+  // Zum Ausprobieren: ?stadt=0..5 und ?wz=riesenrad,park,brunnen
+  if (P.has('stadt')) { STADT.stufe = Math.max(0, Math.min(5, +P.get('stadt'))); STADT.stufenName = ['Siedlung', 'Dorf', 'Kleinstadt', 'Stadt', 'Großstadt', 'Metropole'][STADT.stufe]; }
+  if (P.has('wz')) STADT.wahrzeichen = P.get('wz').split(',').filter(w => WAHRZEICHEN_ZEICHNEN[w]);
+  st = STADT;
+  document.getElementById('stadtName').textContent = st.name;
+  document.getElementById('untertitel').textContent = st.naechsterName
+    ? `${st.stufenName} · ${zahlDE(st.einwohner)} Einwohner · noch ${zahlDE(st.naechsteAb - st.einwohner)} bis ${st.naechsterName}`
+    : `${st.stufenName} · ${zahlDE(st.einwohner)} Einwohner`;
+  if (st.stufe !== vorher) farbCache.clear();
+}
+let fanfareTimer = null;
+function fanfare(oben, gross, unten) {
+  const el = document.getElementById('fanfare');
+  el.querySelector('.f1').textContent = oben;
+  el.querySelector('.f2').textContent = gross;
+  el.querySelector('.f3').textContent = unten || '';
+  el.classList.remove('versteckt'); el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+  clearTimeout(fanfareTimer);
+  fanfareTimer = setTimeout(() => el.classList.add('versteckt'), 6500);
 }
 function zeigeSpiel(s) {
   spiel = s;
@@ -373,7 +433,13 @@ function bannerAktualisieren() {
   const el = document.getElementById('banner');
   const jetzt = Date.now() + zeitVersatz;
   let art = null, titel = '', text = '', uhr = '';
-  if (bannerErgebnis && Date.now() < bannerErgebnis.bis) {
+  let html = null;
+  if (spiel.abstimmung && jetzt < spiel.abstimmung.bis) {
+    const a = spiel.abstimmung, summe = a.optionen.reduce((n, o) => n + o.stimmen, 0) || 1;
+    art = 'abstimmung'; titel = '🗳️ Was bauen wir?'; uhr = Math.ceil((a.bis - jetzt) / 1000) + ' s';
+    html = a.optionen.map((o, i) => `<div class="option"><b>${i + 1}</b><span>${esc(o.name)}</span><i style="width:${(o.stimmen / summe * 100).toFixed(0)}%"></i><em>${o.stimmen}</em></div>`).join('') +
+      '<div class="hinweis-klein">Schreib die Zahl in den Chat!</div>';
+  } else if (bannerErgebnis && Date.now() < bannerErgebnis.bis) {
     art = bannerErgebnis.gewonnen ? 'gewonnen' : 'quiz'; titel = '🧠 Quiz'; text = bannerErgebnis.text;
   } else if (spiel.quiz && jetzt < spiel.quiz.bis) {
     art = 'quiz'; titel = '🧠 Quiz · +5'; text = spiel.quiz.frage; uhr = Math.ceil((spiel.quiz.bis - jetzt) / 1000) + ' s';
@@ -383,7 +449,8 @@ function bannerAktualisieren() {
   if (!art) { el.classList.add('versteckt'); el.dataset.art = ''; return; }
   if (el.dataset.art !== art + titel) { el.className = 'banner ' + art; el.dataset.art = art + titel; }
   document.getElementById('bannerTitel').textContent = titel;
-  document.getElementById('bannerText').textContent = text;
+  if (html !== null) document.getElementById('bannerText').innerHTML = html;
+  else document.getElementById('bannerText').textContent = text;
   document.getElementById('bannerUhr').textContent = uhr;
 }
 setInterval(bannerAktualisieren, 250);
@@ -431,7 +498,8 @@ const istStrasse = (x, y) => mod3(x) === 0 || mod3(y) === 0;
 const PLAETZE = (() => {
   const l = [];
   const R = 50;
-  for (let x = -R; x <= R; x++) for (let y = -R; y <= R; y++) if (!istStrasse(x, y)) l.push([x, y]);
+  const mitte = new Set(['1,1', '2,1', '1,2', '2,2']); // Rathaus + Wahrzeichen
+  for (let x = -R; x <= R; x++) for (let y = -R; y <= R; y++) if (!istStrasse(x, y) && !mitte.has(x + ',' + y)) l.push([x, y]);
   l.sort((a, b) => (Math.hypot(a[0] - 1.5, a[1] - 1.5) - Math.hypot(b[0] - 1.5, b[1] - 1.5)) || (a[0] - b[0]) || (a[1] - b[1]));
   return l;
 })();
@@ -813,10 +881,287 @@ const GEBAEUDE = [
 // Höchster Punkt je Stufe (für Namensschilder und Kamera)
 const HOEHE = [14, 30, 34, 26, 30, 50, 44, 47, 49, 58, 57, 80];
 
+// ============================================================ Stadt: Ausbaustufe, Rathaus, Wahrzeichen, Autos
+// Je mehr Einwohner, desto besser Straßen und Laternen (Stufe kommt vom Programm).
+let STADT = { name: 'Zuschauer-Stadt', stufe: 0, stufenName: 'Siedlung', einwohner: 0, naechsteAb: 8, naechsterName: 'Dorf', wahrzeichen: [], tag: 1 };
+const SS = () => STADT.stufe;
+const MITTE = [[1, 1], [2, 1], [1, 2], [2, 2]]; // Rathaus + drei Plätze für Wahrzeichen
+const STRASSE = [
+  { belag: '#b08d5e' },                                              // 0 Siedlung: Feldwege
+  { belag: '#8f8a85', pflaster: true },                              // 1 Dorf: Kopfsteinpflaster
+  { belag: '#4b5563', linie: '#fef3c7' },                            // 2 Kleinstadt: Asphalt
+  { belag: '#414957', linie: '#ffffff', zebra: true },               // 3 Stadt: + Zebrastreifen
+  { belag: '#363d49', linie: '#ffffff', zebra: true, rad: true },    // 4 Großstadt: + Radwege
+  { belag: '#2a303b', linie: '#ffffff', zebra: true, rad: true, gold: true } // 5 Metropole
+];
+
+function strassenBelag(gx, gy) {
+  const st = STRASSE[SS()];
+  const sx = mod3(gx) === 0, sy = mod3(gy) === 0, kreuzung = sx && sy;
+  boden(-.5, -.5, .5, .5, 0, ton(st.belag));
+  // Achse der Straße: entlang v (sx) oder entlang u (sy)
+  const quer = (a0, a1, b0, b1, z, f) => sx ? boden(a0, b0, a1, b1, z, f) : boden(b0, a0, b1, a1, z, f);
+  if (SS() === 0) {                       // Fahrspuren im Sand
+    if (!kreuzung) { quer(-.28, -.16, -.5, .5, .1, ton('#9a7a4f')); quer(.16, .28, -.5, .5, .1, ton('#9a7a4f')); }
+    return;
+  }
+  if (st.pflaster) {                      // Pflastersteine
+    ctx.strokeStyle = ton('#6b6560', 1, 0.55); ctx.lineWidth = 0.6; ctx.beginPath();
+    for (let i = -.4; i <= .41; i += .2) {
+      const [a, b] = [Pt(i, -.5), Pt(i, .5)], [c, d] = [Pt(-.5, i), Pt(.5, i)];
+      ctx.moveTo(...a); ctx.lineTo(...b); ctx.moveTo(...c); ctx.lineTo(...d);
+    }
+    ctx.stroke();
+    return;
+  }
+  if (kreuzung) return;
+  if (st.rad) quer(.3, .42, -.5, .5, .15, ton('#16a34a', 0.9));                 // Radweg
+  if (st.gold) { quer(-.46, -.43, -.5, .5, .2, ton('#fbbf24')); quer(.43, .46, -.5, .5, .2, ton('#fbbf24')); }
+  if (st.linie) {                                                              // Mittellinie
+    ctx.strokeStyle = ton(st.linie, 1, 0.6); ctx.lineWidth = 1.4; ctx.setLineDash([6, 6]);
+    const [a, b] = sx ? [Pt(0, -.5, .2), Pt(0, .5, .2)] : [Pt(-.5, 0, .2), Pt(.5, 0, .2)];
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (st.zebra) {                                                              // Zebrastreifen vor Kreuzungen
+    const vor = sx ? mod3(gy - 1) === 0 : mod3(gx - 1) === 0, nach = sx ? mod3(gy + 1) === 0 : mod3(gx + 1) === 0;
+    for (const [b0, b1] of [vor ? [-.46, -.26] : null, nach ? [.26, .46] : null].filter(Boolean)) {
+      for (let a = -.38; a < .38; a += .13) quer(a, a + .07, b0, b1, .25, ton('#f8fafc', 1, 0.9));
+    }
+  }
+}
+
+function grundstueckBoden() {
+  if (SS() === 0) { boden(-.5, -.5, .5, .5, 0, ton('#84cc16', 0.92)); return; }
+  if (SS() === 1) { boden(-.5, -.5, .5, .5, 0, ton('#a8a29e')); boden(-.48, -.48, .48, .48, 0.2, ton('#84cc16', 0.95)); return; }
+  boden(-.5, -.5, .5, .5, 0, ton(SS() >= 3 ? '#e7e5e4' : '#d6d3d1'));     // Gehweg
+  if (SS() >= 3) boden(-.47, -.47, .47, .47, 0.6, ton('#a8a29e'));          // Bordstein
+  boden(-.46, -.46, .46, .46, 0.8, ton('#84cc16', 0.95));
+}
+
+// Laternen und Straßendeko je Stufe
+function leuchten(x, y, farbe, r = 26, staerke = 0.35) {
+  if (nacht <= 0.3) return;
+  const g = ctx.createRadialGradient(x, y + 10, 0, x, y + 10, r);
+  g.addColorStop(0, farbe.replace('A', (staerke * nacht).toFixed(2))); g.addColorStop(1, farbe.replace('A', '0'));
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y + 10, r, 0, Math.PI * 2); ctx.fill();
+}
+function stange(u, v, h, farbe, breite = 1.6) {
+  const [x0, y0] = Pt(u, v, 0), [x1, y1] = Pt(u, v, h);
+  ctx.strokeStyle = ton(farbe); ctx.lineWidth = breite; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  return [x1, y1];
+}
+function lampe(u, v, stil) {
+  if (stil === 1) {                                   // Holzlaterne
+    const [x, y] = stange(u, v, 15, '#78350f', 2);
+    ctx.fillStyle = nacht > 0.3 ? '#fdba74' : ton('#fde68a'); ctx.fillRect(x - 2.2, y - 4, 4.4, 4.5);
+    leuchten(x, y, 'rgba(253,186,116,A)', 22, 0.45);
+  } else if (stil === 2) {                            // klassische Straßenlaterne
+    const [x, y] = stange(u, v, 22, '#1f2937', 1.8);
+    ctx.fillStyle = ton('#1f2937'); ctx.fillRect(x - 3, y - 1.5, 6, 2);
+    ctx.fillStyle = nacht > 0.3 ? '#fde68a' : ton('#e2e8f0'); ctx.beginPath(); ctx.arc(x, y + 2, 2.6, 0, Math.PI * 2); ctx.fill();
+    leuchten(x, y, 'rgba(253,230,138,A)');
+  } else if (stil === 3) {                            // moderne Laterne mit Ausleger
+    const [x, y] = stange(u, v, 26, '#64748b', 1.8);
+    ctx.strokeStyle = ton('#64748b'); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 7, y + 3); ctx.stroke();
+    ctx.fillStyle = nacht > 0.3 ? '#ffffff' : ton('#cbd5e1'); ctx.fillRect(x - 10, y + 2, 5, 2);
+    leuchten(x - 7, y + 2, 'rgba(255,255,255,A)', 28, 0.3);
+  } else if (stil === 4) {                            // LED-Laterne
+    const [x, y] = stange(u, v, 28, '#e2e8f0', 1.5);
+    ctx.strokeStyle = nacht > 0.3 ? '#a5f3fc' : ton('#94a3b8'); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(x, y, 4.5, 2, 0, 0, Math.PI * 2); ctx.stroke();
+    leuchten(x, y, 'rgba(165,243,252,A)', 30, 0.35);
+  } else if (stil === 5) {                            // goldene Prachtlaterne
+    const [x, y] = stange(u, v, 26, '#d97706', 2.2);
+    ctx.strokeStyle = ton('#d97706'); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x - 6, y + 2); ctx.lineTo(x + 6, y + 2); ctx.stroke();
+    for (const d of [-6, 6]) { ctx.fillStyle = nacht > 0.3 ? '#fef3c7' : ton('#fde68a'); ctx.beginPath(); ctx.arc(x + d, y, 2.8, 0, Math.PI * 2); ctx.fill(); }
+    leuchten(x, y, 'rgba(251,191,36,A)', 32, 0.4);
+  }
+}
+function busch(u, v, s = 1) {
+  const [x, y] = Pt(u, v, 3 * s);
+  ctx.fillStyle = ton('#4d7c0f'); ctx.beginPath(); ctx.arc(x, y, 5 * s, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = ton('#65a30d'); ctx.beginPath(); ctx.arc(x - 1.5 * s, y - 1.5 * s, 3.5 * s, 0, Math.PI * 2); ctx.fill();
+}
+function bank(u, v, entlangV) {
+  if (entlangV) { kasten(u - .03, v - .08, u + .03, v + .08, 2, 3.5, '#92400e'); kasten(u - .035, v - .08, u - .02, v + .08, 3.5, 7, '#78350f'); }
+  else { kasten(u - .08, v - .03, u + .08, v + .03, 2, 3.5, '#92400e'); kasten(u - .08, v - .035, u + .08, v - .02, 3.5, 7, '#78350f'); }
+}
+function kuebel(u, v) {
+  kasten(u - .03, v - .03, u + .03, v + .03, 0, 4, '#e5e7eb');
+  const [x, y] = Pt(u, v, 6);
+  ctx.fillStyle = ton('#ec4899'); ctx.beginPath(); ctx.arc(x - 1.5, y, 1.8, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = ton('#facc15'); ctx.beginPath(); ctx.arc(x + 1.5, y - .5, 1.8, 0, Math.PI * 2); ctx.fill();
+}
+function strassenDeko(gx, gy) {
+  const s = SS();
+  const sx = mod3(gx) === 0, sy = mod3(gy) === 0;
+  if (sx && sy) {                                          // Kreuzung
+    if (s === 0) { if ((gx + gy) % 2 === 0) busch(.4, .4, .9); return; }
+    lampe(.4, .4, s);
+    if (s >= 4) kuebel(-.4, -.4);
+    return;
+  }
+  const a = ((gx + gy) % 2 + 2) % 2 === 0, entlangV = sx;
+  const rand = (p, q) => entlangV ? [p, q] : [q, p];       // Position quer/längs zur Straße
+  if (s === 0) { if (a) busch(...rand(.44, .1), .7); return; }
+  if (a) {
+    if (s >= 2) baum(...rand(.44, .15), .75);
+    if (s >= 3) bank(...rand(-.43, -.05), entlangV);
+  } else if (s >= 3) {
+    lampe(...rand(-.44, .2), s);
+    if (s >= 4) kuebel(...rand(.44, -.2));
+  }
+}
+
+// ---------------------------------------------- Rathaus (wächst mit der Stadt)
+function rathaus() {
+  const s = SS();
+  if (s === 0) {                                            // Zelt
+    boden(-.4, -.4, .4, .4, .5, ton('#a3a380', 1, .5));
+    flaeche([Pt(-.25, .2, 0), Pt(.25, .2, 0), Pt(.25, 0, 20), Pt(-.25, 0, 20)], ton('#f97316', .95));
+    flaeche([Pt(.25, .2, 0), Pt(.25, -.2, 0), Pt(.25, 0, 20)], ton('#ea580c', .8));
+    flaeche([Pt(-.05, .2, 0), Pt(.05, .2, 0), Pt(0, .2, 12)], ton('#7c2d12'));
+    const [x, y] = stange(-.3, .25, 24, '#78350f', 1.4);
+    ctx.fillStyle = ton('#ec4899'); ctx.fillRect(x, y, 8, 5);
+    return;
+  }
+  boden(-.48, -.48, .48, .48, .6, ton(s >= 3 ? '#e7e5e4' : '#d6d3d1'));
+  if (s === 1) {                                            // kleines Holz-Rathaus
+    kasten(-.28, -.24, .26, .2, 0, 22, '#b45309');
+    fensterL(-.24, .2, .2, 4, 18, 1, 3);
+    tuerL(-.04, .2, .1, 13, '#7c2d12');
+    satteldach(-.28, -.24, .26, .2, 22, 13, '#7f1d1d', '#b45309');
+    return;
+  }
+  const wand = s >= 5 ? '#fef3c7' : s >= 3 ? '#f8fafc' : '#e7d3b0';
+  kasten(-.4, -.36, .3, .22, 0, 28, wand);
+  fensterL(-.36, .26, .22, 4, 25, 2, 6);
+  fensterR(-.3, .16, .3, 4, 25, 2, 3);
+  tuerL(-.1, .22, .1, 15, '#7c2d12');
+  if (s >= 3) for (let u = -.36; u <= .24; u += .1) kasten(u, .23, u + .025, .26, 0, 28, '#ffffff');   // Säulen
+  if (s >= 5) { kasten(-.41, -.37, .31, .23, 26, 28, '#fbbf24', { oben: 'rgba(0,0,0,0)' }); }
+  if (s === 2) {                                            // Uhrturm
+    satteldach(-.4, -.36, .3, .22, 28, 10, '#7f1d1d', wand);
+    kasten(-.1, -.12, .06, .04, 28, 52, wand);
+    const [cx, cy] = Pt(-.02, .04, 46);
+    ctx.fillStyle = ton('#ffffff'); ctx.beginPath(); ctx.ellipse(cx, cy, 4, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = ton('#1e293b'); ctx.lineWidth = .8; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - 2.6); ctx.moveTo(cx, cy); ctx.lineTo(cx + 2, cy); ctx.stroke();
+    flaeche([Pt(-.11, .05, 52), Pt(.07, .05, 52), Pt(-.02, -.04, 64)], ton('#7f1d1d', .95));
+    flaeche([Pt(.07, .05, 52), Pt(.07, -.13, 52), Pt(-.02, -.04, 64)], ton('#7f1d1d', .75));
+  } else {
+    kasten(-.42, -.38, .32, .24, 28, 31, s >= 5 ? '#fbbf24' : '#cbd5e1');
+    if (s >= 4) {                                           // Kuppel
+      kasten(-.18, -.2, .08, .06, 31, 40, wand);
+      const [cx, cy] = Pt(-.05, -.07, 40);
+      ctx.fillStyle = ton(s >= 5 ? '#fbbf24' : '#2dd4bf', .9);
+      ctx.beginPath(); ctx.ellipse(cx, cy, 15, 15, 0, Math.PI, 0); ctx.fill();
+      ctx.fillStyle = ton(s >= 5 ? '#fde68a' : '#5eead4', 1, .6);
+      ctx.beginPath(); ctx.ellipse(cx - 4, cy - 6, 4, 6, 0, 0, Math.PI * 2); ctx.fill();
+      stange(-.05, -.07, 60, '#475569', 1.2);
+    }
+    for (const u of [-.36, .26]) { const [x, y] = stange(u, .2, 44, '#475569', 1.2); ctx.fillStyle = ton(u < 0 ? '#ec4899' : '#8b5cf6'); ctx.fillRect(x, y, 8, 5); }
+  }
+  if (s >= 5) {                                             // goldenes Glitzern
+    for (let i = 0; i < 3; i++) {
+      const w = ZEIT / 650 + i * 2.1, [x, y] = Pt(-.3 + i * .25, -.2, 50 + Math.sin(w) * 8), a = (Math.sin(w * 2) + 1) / 2;
+      ctx.fillStyle = `rgba(253, 230, 138, ${a})`; ctx.beginPath(); ctx.arc(x, y, 1.6 + a, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+}
+
+// ---------------------------------------------- Wahrzeichen
+function kreisBoden(u, v, r, farbe, z = 1) {
+  const [x, y] = Pt(u, v, z);
+  ctx.fillStyle = farbe; ctx.beginPath(); ctx.ellipse(x, y, r * KW / Math.SQRT2, r * KH / Math.SQRT2, 0, 0, Math.PI * 2); ctx.fill();
+}
+const WAHRZEICHEN_ZEICHNEN = {
+  riesenrad() {
+    boden(-.48, -.48, .48, .48, .6, ton('#e7e5e4'));
+    const [mx, my] = Pt(0, 0, 46);
+    const [lx, ly] = Pt(-.22, .1, 0), [rx, ry] = Pt(.12, .25, 0);
+    ctx.strokeStyle = ton('#475569'); ctx.lineWidth = 2.4; ctx.beginPath();
+    ctx.moveTo(lx, ly); ctx.lineTo(mx, my); ctx.lineTo(rx, ry); ctx.stroke();
+    const r = 34, dreh = ZEIT / 4000;
+    ctx.strokeStyle = ton('#e2e8f0'); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(mx, my, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = .8; ctx.beginPath();
+    for (let i = 0; i < 12; i++) { const w = dreh + i / 12 * Math.PI * 2; ctx.moveTo(mx, my); ctx.lineTo(mx + Math.cos(w) * r, my + Math.sin(w) * r); }
+    ctx.stroke();
+    const farben = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
+    for (let i = 0; i < 12; i++) {
+      const w = dreh + i / 12 * Math.PI * 2, gx = mx + Math.cos(w) * r, gy = my + Math.sin(w) * r;
+      ctx.fillStyle = nacht > 0.3 ? `hsl(${(i * 30 + ZEIT / 20) % 360}, 90%, 65%)` : ton(farben[i % 6]);
+      ctx.fillRect(gx - 3, gy, 6, 5);
+    }
+    ctx.fillStyle = ton('#1e293b'); ctx.beginPath(); ctx.arc(mx, my, 3, 0, Math.PI * 2); ctx.fill();
+    if (nacht > 0.3) leuchten(mx, my - 10, 'rgba(244,114,182,A)', 50, 0.25);
+  },
+  park() {
+    boden(-.48, -.48, .48, .48, .6, ton('#4ade80', .9));
+    kreisBoden(.05, .05, .24, ton('#38bdf8'), 1.2);
+    kreisBoden(.05, .05, .17, nacht > 0.4 ? 'rgba(34,211,238,.8)' : ton('#7dd3fc'), 1.4);
+    boden(-.48, .38, .48, .46, 1, ton('#d6d3d1'));
+    baum(-.35, -.35, 1.1); baum(.3, -.38, .9, '#16a34a'); baum(-.38, .2, .8, '#4ade80');
+    bank(.3, .32, false);
+    for (let i = 0; i < 2; i++) {                            // Enten
+      const w = ZEIT / 3000 + i * 3, [x, y] = Pt(.05 + Math.cos(w) * .1, .05 + Math.sin(w) * .1, 2);
+      ctx.fillStyle = ton('#ffffff'); ctx.beginPath(); ctx.ellipse(x, y, 2.6, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = ton('#f59e0b'); ctx.fillRect(x + 2, y - 1, 1.5, 1);
+    }
+    blumen(-.45, -.1, -.15, .3, 10, 7);
+  },
+  brunnen() {
+    boden(-.48, -.48, .48, .48, .6, ton('#e7e5e4'));
+    for (let i = 0; i < 4; i++) boden(-.48 + i * .24, -.48, -.36 + i * .24, .48, .7, ton('#d6d3d1', 1, .6));
+    kreisBoden(0, 0, .3, ton('#94a3b8'), 1);
+    kreisBoden(0, 0, .26, nacht > 0.4 ? 'rgba(34,211,238,.85)' : ton('#38bdf8'), 3);
+    kasten(-.04, -.04, .04, .04, 3, 16, '#cbd5e1');
+    const [x, y] = Pt(0, 0, 18);
+    for (let i = 0; i < 10; i++) {                           // Wasserstrahlen
+      const w = i / 10 * Math.PI * 2, p = ((ZEIT / 900) + i * .1) % 1;
+      const dx = Math.cos(w) * 22 * p, dy = Math.sin(w) * 11 * p - Math.sin(p * Math.PI) * 14;
+      ctx.fillStyle = `rgba(186, 230, 253, ${0.9 - p * .5})`; ctx.beginPath(); ctx.arc(x + dx, y + dy + p * 14, 1.6, 0, Math.PI * 2); ctx.fill();
+    }
+    if (nacht > 0.3) leuchten(x, y, 'rgba(56,189,248,A)', 40, 0.3);
+    palme(-.42, -.42, .9); palme(.42, -.42, .9); palme(-.42, .42, .8);
+  }
+};
+const WAHRZEICHEN_NAME = { riesenrad: '🎡 Riesenrad', park: '🌳 Park', brunnen: '⛲ Springbrunnen' };
+
+// ---------------------------------------------- Autos (mehr Zuschauer = mehr Verkehr)
+const autos = [];
+const AUTOFARBEN = ['#ef4444', '#3b82f6', '#f8fafc', '#facc15', '#22c55e', '#1f2937', '#f97316', '#a855f7'];
+let zuschauerJetzt = 0;
+function autosAktualisieren(dt, x0, x1) {
+  const ziel = SS() < 2 ? 0 : Math.min(16, Math.floor(zuschauerJetzt / (SS() >= 3 ? 3 : 5)) + (SS() >= 3 ? 2 : 0));
+  const linien = [];
+  for (let k = Math.ceil(x0 / 3) * 3; k <= x1; k += 3) linien.push(k);
+  while (autos.length < ziel && linien.length) {
+    const richtung = Math.random() < .5 ? 1 : -1;
+    autos.push({ achse: Math.random() < .5 ? 'u' : 'v', fest: linien[Math.floor(Math.random() * linien.length)],
+      pos: x0 + Math.random() * (x1 - x0), richtung, tempo: .6 + Math.random() * .5, farbe: AUTOFARBEN[Math.floor(Math.random() * AUTOFARBEN.length)] });
+  }
+  if (autos.length > ziel) autos.length = ziel;
+  for (const a of autos) {
+    a.pos += a.richtung * a.tempo * dt / 1000;
+    if (a.pos > x1 + 1) a.pos = x0 - 1; else if (a.pos < x0 - 1) a.pos = x1 + 1;
+  }
+}
+function autoZeichnen(a) {
+  const spur = a.richtung > 0 ? .18 : -.18;
+  const [x, y] = a.achse === 'v' ? [a.fest + spur, a.pos] : [a.pos, a.fest - spur];
+  const [cx, cy] = iso(x, y); OX = cx; OY = cy; ZS = 1;
+  if (a.achse === 'v') { kasten(-.06, -.11, .06, .11, .5, 5, a.farbe); kasten(-.05, -.05, .05, .05, 5, 8.5, a.farbe, { links: ton('#bae6fd', .9), rechts: ton('#7dd3fc', .8) }); }
+  else { kasten(-.11, -.06, .11, .06, .5, 5, a.farbe); kasten(-.05, -.05, .05, .05, 5, 8.5, a.farbe, { links: ton('#bae6fd', .9), rechts: ton('#7dd3fc', .8) }); }
+  if (nacht > 0.3) {
+    const vorne = a.achse === 'v' ? Pt(0, .11 * a.richtung, 3) : Pt(.11 * a.richtung, 0, 3);
+    ctx.fillStyle = 'rgba(254, 249, 195, .95)'; ctx.beginPath(); ctx.arc(vorne[0], vorne[1], 1.6, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
 // ============================================================ Kamera
 const kamera = { x: 0, y: 0, zoom: 1.2 };
 function kameraZiel() {
-  let minX = -KW * 1.6, maxX = KW * 1.6, minY = -KH * 2.4, maxY = KH * 2.4;
+  let minX = -KW * 1.6, maxX = KW * 1.6, minY = KH * 1.5 - 110, maxY = KH * 3.4;
   for (const b of leute.values()) {
     const [sx, sy] = iso(...platzVon(b));
     minX = Math.min(minX, sx - KW * .6); maxX = Math.max(maxX, sx + KW * .6);
@@ -826,11 +1171,11 @@ function kameraZiel() {
   const verfuegbarW = W * (FILM ? 1.3 : 0.96), verfuegbarH = Math.max(100, H - oben - unten);
   let zoom = Math.min(2.2, verfuegbarW / (maxX - minX), verfuegbarH / (maxY - minY));
   let x = (minX + maxX) / 2, y = (minY + maxY) / 2;
-  if (spot && performance.now() < spot.bis && leute.has(spot.id)) {
-    const b = leute.get(spot.id);
-    const [sx, sy] = iso(...platzVon(b));
+  if (spot && performance.now() < spot.bis && (spot.ort || leute.has(spot.id))) {
+    const [sx, sy] = spot.ort ? iso(...spot.ort) : iso(...platzVon(leute.get(spot.id)));
+    const h = spot.ort ? 40 : HOEHE[leute.get(spot.id).stufe];
     zoom = Math.min(3.2, Math.max(zoom * 1.9, 1.8));
-    x = sx; y = sy - HOEHE[b.stufe] / 2;
+    x = sx; y = sy - h / 2;
   }
   return { zoom, x, y, mitteY: oben + verfuegbarH / 2 };
 }
@@ -881,19 +1226,8 @@ function himmel(dt, t, abend) {
 function bodenKachel(gx, gy) {
   const [cx, cy] = iso(gx, gy);
   OX = cx; OY = cy; ZS = 1;
-  if (istStrasse(gx, gy)) {
-    boden(-.5, -.5, .5, .5, 0, ton('#475569'));
-    const sx = mod3(gx) === 0, sy = mod3(gy) === 0;
-    if (sx !== sy) {
-      ctx.strokeStyle = ton('#fef3c7', 1, 0.6); ctx.lineWidth = 1.4; ctx.setLineDash([6, 6]);
-      ctx.beginPath();
-      const [a, b] = sx ? [Pt(0, -.5), Pt(0, .5)] : [Pt(-.5, 0), Pt(.5, 0)];
-      ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.setLineDash([]);
-    }
-  } else {
-    boden(-.5, -.5, .5, .5, 0, ton('#d6d3d1'));             // Gehweg
-    boden(-.47, -.47, .47, .47, 0.3, ton('#84cc16', 0.95)); // Wiese
-  }
+  if (istStrasse(gx, gy)) strassenBelag(gx, gy);
+  else grundstueckBoden();
 }
 
 // ============================================================ Effekte
@@ -951,15 +1285,32 @@ function schleife() {
   const x0 = Math.floor(1.5 - maxR), x1 = Math.ceil(1.5 + maxR);
   for (let s = 2 * x0; s <= 2 * x1; s++) for (let x = x0; x <= x1; x++) { const y = s - x; if (y >= x0 && y <= x1) bodenKachel(x, y); }
 
-  // Gebäude und Laternen von hinten nach vorne
+  // Gebäude, Straßendeko und Autos von hinten nach vorne
+  autosAktualisieren(dt, x0, x1);
   const reihen = [];
   for (const b of leute.values()) { const [x, y] = platzVon(b); reihen.push({ x, y, b }); }
-  for (let x = x0; x <= x1; x++) for (let y = x0; y <= x1; y++) if (mod3(x) === 0 && mod3(y) === 0) reihen.push({ x, y });
+  for (let x = x0; x <= x1; x++) for (let y = x0; y <= x1; y++) if (istStrasse(x, y)) reihen.push({ x, y, deko: true });
+  reihen.push({ x: 1, y: 1, rathaus: true });
+  STADT.wahrzeichen.forEach((w, i) => { if (MITTE[i + 1]) reihen.push({ x: MITTE[i + 1][0], y: MITTE[i + 1][1], wahrzeichen: w }); });
+  for (const a of autos) {
+    const spur = a.richtung > 0 ? .18 : -.18;
+    const [x, y] = a.achse === 'v' ? [a.fest + spur, a.pos] : [a.pos, a.fest - spur];
+    reihen.push({ x: x + .3, y: y + .3, auto: a }); // +0.3: Autos vor der Straßendeko derselben Kachel
+  }
   reihen.sort((p, q) => (p.x + p.y) - (q.x + q.y) || p.x - q.x);
   const gezeichnet = [];
+  sonderSchilder.length = 0;
   for (const r of reihen) {
     const [cx, cy] = iso(r.x, r.y);
-    if (!r.b) { OX = cx; OY = cy; ZS = 1; laterne(.38, .38); continue; }
+    if (r.deko) { OX = cx; OY = cy; ZS = 1; strassenDeko(r.x, r.y); continue; }
+    if (r.auto) { autoZeichnen(r.auto); continue; }
+    if (r.rathaus) { OX = cx; OY = cy; ZS = 1; rathaus(); sonderSchilder.push({ x: cx, y: cy - [26, 38, 68, 46, 66, 66][SS()], text: '🏛️ Rathaus' }); continue; }
+    if (r.wahrzeichen) {
+      OX = cx; OY = cy; ZS = wahrzeichenWachsen(r.wahrzeichen);
+      WAHRZEICHEN_ZEICHNEN[r.wahrzeichen]?.(); ZS = 1;
+      sonderSchilder.push({ x: cx, y: cy - (r.wahrzeichen === 'riesenrad' ? 88 : 30), text: WAHRZEICHEN_NAME[r.wahrzeichen] });
+      continue;
+    }
     const b = r.b, a = anim.get(b.id);
     OX = cx; OY = cy - Math.sin(a.hupf * Math.PI) * 3;
     const w = a.wachsen;
@@ -1037,22 +1388,30 @@ function namen(liste, t) {
     return { b, aktiv, wert: aktiv ? 1e12 + a.letzteAktion : b.punkte };
   }).sort((p, q) => q.wert - p.wert);
   const belegt = [], zeichnen = [];
+  const ueberlappt = r => belegt.some(o => r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h);
+  for (const so of sonderSchilder) {
+    const w = ctx.measureText(so.text).width + gr * 1.1, h = gr * 1.6;
+    const r = { x: so.x - w / 2, y: so.y - h, w, h };
+    for (let i = 0; i < 4 && ueberlappt(r); i++) r.y -= h * 1.1;   // Sonderschilder nach oben ausweichen
+    belegt.push(r); zeichnen.push({ b: { name: so.text }, r, x: so.x, sonder: true });
+  }
   for (const k of kandidaten) {
     if (zeichnen.length >= MAX) break;
     const [x, y] = weltPunkt(k.b, 8);
-    const w = ctx.measureText(k.b.name).width + gr * 1.1, h = gr * 1.6;
+    const text = k.b.name + ((k.b.tage || 0) >= 3 ? ' ⭐' : '');
+    const w = ctx.measureText(text).width + gr * 1.1, h = gr * 1.6;
     const r = { x: x - w / 2, y: y - h, w, h };
     if (belegt.some(o => r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h)) continue;
-    belegt.push(r); zeichnen.push({ ...k, r, x });
+    belegt.push(r); zeichnen.push({ ...k, r, x, text });
   }
   for (const z of zeichnen.reverse()) {
     if (z.aktiv) {
       const g = ctx.createLinearGradient(z.r.x, 0, z.r.x + z.r.w, 0);
       g.addColorStop(0, '#8b5cf6'); g.addColorStop(1, '#ec4899');
       ctx.fillStyle = g;
-    } else ctx.fillStyle = 'rgba(15,23,42,.72)';
+    } else ctx.fillStyle = z.sonder ? 'rgba(180,83,9,.85)' : 'rgba(15,23,42,.72)';
     rundesRechteck(z.r.x, z.r.y, z.r.w, z.r.h, z.r.h / 2); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.fillText(z.b.name, z.x, z.r.y + z.r.h / 2 + gr * 0.05);
+    ctx.fillStyle = '#fff'; ctx.fillText(z.text || z.b.name, z.x, z.r.y + z.r.h / 2 + gr * 0.05);
   }
   ctx.textBaseline = 'alphabetic';
 }
@@ -1090,11 +1449,13 @@ if (FILM) {
     stufe(name, stufe) { const b = filmLeute.get(name); b.stufe = stufe; b.punkte = STUFEN[stufe].ab; senden(b, 'kommentar', '', true); },
     follow(name) { const b = filmLeute.get(name); b.folgt = true; senden(b, 'follow', ''); },
     sprich(text, dauer) { sprechen({ name: 'Bürgermeister Bo', text, dauer: dauer || 1800 + text.length * 45 }); },
-    feuerwerk(n) { feuerwerk(n || 2); }
+    feuerwerk(n) { feuerwerk(n || 2); },
+    stadt(stufe, wahrzeichen = []) { zeigeStadt({ ...STADT, stufe, stufenName: ['Siedlung', 'Dorf', 'Kleinstadt', 'Stadt', 'Großstadt', 'Metropole'][stufe], wahrzeichen }); }
   };
 } else {
   verbinden();
 }
+if (P.has('stadt')) zeigeStadt({ ...STADT });
 requestAnimationFrame(schleife);
 </script>
 </body>

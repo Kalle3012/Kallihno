@@ -42,7 +42,8 @@
   <div>
     <h1>🎙️ Stadt-Regie</h1>
     <p class="hinweis">Diese Seite liest den Bürgermeister laut vor. Lass sie während des Lives in einem normalen Browser-Fenster
-      offen (Chrome oder Edge) und nimm den Computer-Ton in TikTok LIVE Studio / OBS mit auf.</p>
+      offen und nimm den Computer-Ton in TikTok LIVE Studio / OBS mit auf. Am natürlichsten klingt die Stimme in
+      <b>Microsoft Edge</b> (z. B. „Katja Online (Natural)“). Kopfhörer tragen, sonst gibt es ein Echo.</p>
   </div>
 
   <section>
@@ -67,12 +68,23 @@
       <button data-aktion="quiz">🧠 Quiz starten</button>
       <button data-aktion="rush">🚧 Bau-Rush starten</button>
       <button data-aktion="feuerwerk">🎆 Feuerwerk</button>
+      <button data-aktion="abstimmung">🗳️ Wahrzeichen-Abstimmung</button>
       <button id="pause">⏸️ Bürgermeister pausieren</button>
     </div>
     <div class="reihe">
       <input type="text" id="text" placeholder="Das soll der Bürgermeister sagen …" maxlength="300">
       <button id="sagen">Sagen</button>
     </div>
+  </section>
+
+  <section>
+    <h2>Stadt</h2>
+    <div class="status" id="stadtInfo">…</div>
+    <div class="reihe">
+      <button data-aktion="bericht">📄 Live beenden: Tagesbericht speichern</button>
+    </div>
+    <p class="hinweis" style="margin:0">Die Stadt wird ständig automatisch gespeichert. Der Tagesbericht wird auch beim Schließen des Programms
+      und am Ende des Lives automatisch geschrieben (Ordner <code>data/berichte</code>).</p>
   </section>
 
   <section>
@@ -140,11 +152,22 @@ function protokoll(text) {
   while (p.children.length > 60) p.lastChild.remove();
 }
 
+let letzteStadt = null, letzteStats = null;
+function stadtInfo(st, stats) {
+  letzteStadt = st || letzteStadt; letzteStats = stats || letzteStats;
+  const s = letzteStadt; if (!s) return;
+  document.getElementById('stadtInfo').textContent =
+    `${s.name}: ${s.stufenName} mit ${s.einwohner} Einwohnern` + (s.naechsterName ? ` (noch ${s.naechsteAb - s.einwohner} bis ${s.naechsterName})` : '') +
+    ` · Tag ${s.tag}` + (s.wahrzeichen.length ? ` · Wahrzeichen: ${s.wahrzeichen.length}/3` : '') +
+    (letzteStats ? ` · Verbindung: ${letzteStats.status} · ${letzteStats.zuschauer} Zuschauer` : '');
+}
 function verbinden() {
   ws = new WebSocket('ws://' + location.host);
   ws.onmessage = e => {
     const m = JSON.parse(e.data);
-    if (m.t === 'alles') { pausiert = m.moderator.pausiert; pauseAnzeigen(); }
+    if (m.t === 'alles') { pausiert = m.moderator.pausiert; pauseAnzeigen(); if (m.stadt) stadtInfo(m.stadt, m.stats); }
+    if (m.t === 'stadt' || m.t === 'stadtAufstieg') stadtInfo(m.stadt);
+    if (m.t === 'stats') stadtInfo(null, m.stats);
     if (m.t === 'moderator') { pausiert = m.pausiert; pauseAnzeigen(); }
     if (m.t === 'sprich') { protokoll(m.text); vorlesen(m.text); }
   };

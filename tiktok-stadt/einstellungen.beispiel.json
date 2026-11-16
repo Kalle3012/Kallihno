@@ -1,13 +1,16 @@
 {
   "_hinweis": "Kopiere diese Datei als einstellungen.json und trage deine Werte ein. Leere Felder = Standardwert.",
   "tiktokName": "",
+  "stadtName": "Zuschauer-Stadt",
+  "moderatorName": "Bürgermeister Bo",
   "anthropicApiKey": "",
   "kiModell": "claude-opus-5-5",
-  "moderatorName": "Bürgermeister Bo",
+  "eulerApiKey": "",
   "port": 3000,
   "kommentarPauseSekunden": 2,
   "quizAlleMinuten": 6,
   "bauRushAlleMinuten": 10,
   "bauRushSekunden": 60,
-  "likeZielSchritt": 1000
+  "likeZielSchritt": 1000,
+  "abstimmungSekunden": 45
 }

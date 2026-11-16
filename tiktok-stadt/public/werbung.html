@@ -89,6 +89,7 @@ let start = null, D = [], zeiten = null, DAUER = 27;
 function drehbuch() {
   const roh = [];
   const leute = ['Lena', 'Max', 'Mia', 'Ben', 'Emma', 'Paul', 'Sofia', 'Noah', 'Hannah', 'Elias', 'Clara', 'Jonas'];
+  roh.push([0.01, f => f.stadt(3, ['riesenrad'])]); // schöne Stadt mit Straßen, Laternen und Riesenrad
   leute.slice(0, 6).forEach((n, i) => roh.push([0.3 + i * 0.35, f => f.neu(n)]));
   roh.push([2.6, f => f.neu('Du?', '#ec4899')]);
   leute.slice(6).forEach((n, i) => roh.push([3.9 + i * 0.45, f => f.neu(n)]));

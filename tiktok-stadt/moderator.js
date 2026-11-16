@@ -21,14 +21,14 @@ const SAETZE = {
     'Neue Bürger: {namen}! Herzlich willkommen in unserer Stadt.'
   ],
   aufstiegKlein: [
-    '{name} hat jetzt eine {stufe}! Weiter so!',
+    'Aufstieg für {name}: {stufe}! Weiter so!',
     'Glückwunsch {name}, aus deiner Hütte wird langsam was: {stufe}!',
     '{name} baut fleißig: {stufe}!'
   ],
   aufstiegGross: [
-    'Wow! {name} wohnt jetzt in einer {stufe}! Das ist eine der schönsten Adressen der Stadt!',
-    'Schaut euch das an: {name} hat sich eine {stufe} erarbeitet! Riesigen Applaus!',
-    'Neuer Luxus in der Stadt: {name} besitzt jetzt eine {stufe}!'
+    'Wow! {name} hat ein neues Zuhause: {stufe}! Das ist eine der schönsten Adressen der Stadt!',
+    'Schaut euch das an: {name} hat es geschafft. {stufe}! Riesigen Applaus!',
+    'Neuer Luxus in der Stadt: {stufe} für {name}!'
   ],
   aufstiegMax: [
     'Unglaublich! {name} hat die Riesen-Villa! Das höchste, was man in dieser Stadt erreichen kann! Verbeugt euch!'
@@ -58,16 +58,28 @@ const SAETZE = {
     'Hmm, {name}, darüber muss der Stadtrat noch beraten. Bis dahin: weiterbauen!'
   ],
   antwortAllgemein: [
-    '{name}, noch {fehlen} Punkte bis zu deiner {naechste}!',
-    'Stark, {name}! Deine {stufe} wächst.',
+    '{name}, noch {fehlen} Punkte bis zur nächsten Stufe: {naechste}!',
+    'Stark, {name}! Dein Haus wächst.',
     '{name} ist heute richtig fleißig!',
-    'Ich sehe dich, {name}! Noch {fehlen} Punkte und du hast eine {naechste}.'
+    'Ich sehe dich, {name}! Noch {fehlen} Punkte, dann gibt es: {naechste}.'
+  ],
+  zurueckEiner: [
+    'Willkommen zurück, {namen}! Dein Zuhause steht noch genau da, wo du es gelassen hast: {stufe}.',
+    'Schön, dass du wieder da bist, {namen}! Dein Haus hat auf dich gewartet.',
+    '{namen} ist zurück in der Stadt! Weiter geht es mit dem Bauen.'
+  ],
+  zurueckViele: [
+    'Willkommen zurück, {namen}! Eure Häuser stehen alle noch.',
+    'Die Stammgäste sind da: {namen}! Schön, euch wiederzusehen.'
   ],
   leerlauf: [
+    'Unsere Stadt {stadtName} ist gerade {stadtStufe}. Mit {fehlenStadt} neuen Bürgern werden wir {naechsteStadt} und bekommen bessere Straßen!',
+    'Je mehr Leute hier wohnen, desto schöner wird die ganze Stadt. Ladet eure Freunde ein!',
+    'Schreib !stadt in den Chat und ich sage dir, wie weit unsere Stadt ist.',
     'Kleiner Tipp: Wer schreibt, baut! Jeder Kommentar bringt einen Punkt.',
     'Schreib !haus in den Chat und ich sage dir, wie weit du bist.',
     'Mit !farbe und einer Farbe, zum Beispiel !farbe pink, kannst du dein Haus anmalen.',
-    'Gerade führt {top} die Stadt an, mit einer {topStufe}. Wer holt den ersten Platz?',
+    'Gerade führt {top} die Stadt an. Zuhause: {topStufe}. Wer holt den ersten Platz?',
     'Unsere Stadt hat schon {anzahl} Gebäude! Wer ist noch nicht dabei?',
     'Wer folgt, bekommt 5 Bonuspunkte und eine Fahne aufs Dach!',
     'Am Ende wartet die Riesen-Villa. Wer schafft es als Erstes?',
@@ -76,7 +88,7 @@ const SAETZE = {
   ]
 };
 
-const SYSTEM = `Du bist der Bürgermeister einer kleinen Stadt in einem TikTok-Livestream. Jeder Zuschauer besitzt ein Haus. Jeder Kommentar bringt einen Punkt, und mit Punkten wächst das Haus: von der Papierhütte über Holzhütte, Gartenhäuschen, Tiny House, Bungalow, Einfamilienhaus, Modernes Haus, Haus mit Pool, Designer-Villa, Luxusvilla und Prachtvilla bis zur Riesen-Villa. Folgen gibt 5 Punkte, Teilen 3, Geschenke 1 pro Diamant. Befehle im Chat: !haus (eigener Stand), !farbe <farbe> (Haus anmalen), !top.
+const SYSTEM = `Du bist der Bürgermeister einer kleinen Stadt in einem TikTok-Livestream. Jeder Zuschauer besitzt ein Haus. Jeder Kommentar bringt einen Punkt, und mit Punkten wächst das Haus: von der Papierhütte über Holzhütte, Gartenhäuschen, Tiny House, Bungalow, Einfamilienhaus, Modernes Haus, Haus mit Pool, Designer-Villa, Luxusvilla und Prachtvilla bis zur Riesen-Villa. Folgen gibt 5 Punkte, Teilen 3, Geschenke 1 pro Diamant. Je mehr Einwohner, desto besser die ganze Stadt: Siedlung, Dorf, Kleinstadt, Stadt, Großstadt, Metropole (bessere Straßen, Laternen, Rathaus, Wahrzeichen per Abstimmung). Befehle im Chat: !haus (eigener Stand), !farbe <farbe> (Haus anmalen), !top, !stadt.
 
 Deine Aufgabe: Du sprichst mit dem Chat. Deine Antwort wird im Live laut vorgelesen.
 - Antworte auf Deutsch, locker, in Du-Form, herzlich und witzig. Höchstens zwei kurze Sätze, unter 200 Zeichen.
@@ -93,6 +105,9 @@ export function erstelleModerator({ name, senden, stadt, apiKey, modell }) {
   let pausiert = false;
   const neueLeute = [];
   let begruessungsTimer = null;
+  const zurueckLeute = [];
+  let letzterDank = 0;
+  let zurueckTimer = null;
   const kandidaten = [];    // Kommentare, auf die man antworten könnte
   let letzteAntwort = 0;
   const zuletztGesagt = [];
@@ -103,12 +118,20 @@ export function erstelleModerator({ name, senden, stadt, apiKey, modell }) {
   if (ki) console.log(`🤖 ${name} spricht mit KI (${modell}).`);
   else console.log(`🎩 ${name} spricht mit vorbereiteten Sätzen (für freie Antworten: API-Schlüssel in einstellungen.json).`);
 
-  function sag(text, prio = 1) {
+  // Wichtigkeit eines Satzes: Grundpriorität + Wartezeit (alle 8 Sekunden +1),
+  // damit Begrüßungen und Antworten auch bei viel Betrieb drankommen.
+  // (höchstens +2,5, damit zeitkritische Ansagen wie Abstimmung und Quiz trotzdem sofort drankommen)
+  const wert = (x, jetzt) => x.prio + Math.min(2.5, (jetzt - x.zeit) / 8000);
+  // beimSprechen: wird aufgerufen, sobald der Satz wirklich gesagt wird (z. B. um einen Countdown zu starten)
+  // gueltig: Satz wird übersprungen, wenn er nicht mehr passt (z. B. Quiz schon gelöst)
+  function sag(text, prio = 1, beimSprechen = null, gueltig = null) {
     if (!text) return;
-    // Bei zu viel Andrang die unwichtigsten Sätze weglassen
-    warteschlange.push({ text, prio, zeit: Date.now() });
-    warteschlange.sort((a, b) => b.prio - a.prio || a.zeit - b.zeit);
-    while (warteschlange.length > 5) warteschlange.pop();
+    warteschlange.push({ text, prio, zeit: Date.now(), beimSprechen, gueltig });
+    // Bei zu viel Andrang die unwichtigsten Sätze weglassen (nach Grundpriorität, bei Gleichstand die älteren)
+    if (warteschlange.length > 10) {
+      warteschlange.sort((a, b) => (!!b.beimSprechen - !!a.beimSprechen) || b.prio - a.prio || b.zeit - a.zeit);
+      warteschlange.length = 10;
+    }
   }
 
   // Jede halbe Sekunde: Ist der Bürgermeister frei? Dann den nächsten Satz sagen.
@@ -124,6 +147,8 @@ export function erstelleModerator({ name, senden, stadt, apiKey, modell }) {
       antworten();
     }
     if (pausiert || jetzt < sprichtBis) return;
+    for (let i = warteschlange.length - 1; i >= 0; i--) if (warteschlange[i].gueltig && !warteschlange[i].gueltig()) warteschlange.splice(i, 1);
+    warteschlange.sort((a, b) => wert(b, jetzt) - wert(a, jetzt));
     const naechster = warteschlange.shift();
     if (naechster) {
       const dauer = 1800 + naechster.text.length * 65; // ungefähr Vorlesedauer
@@ -131,6 +156,7 @@ export function erstelleModerator({ name, senden, stadt, apiKey, modell }) {
       letzteRede = jetzt;
       zuletztGesagt.push(naechster.text); if (zuletztGesagt.length > 6) zuletztGesagt.shift();
       senden({ t: 'sprich', name, text: naechster.text, dauer });
+      if (naechster.beimSprechen) { try { naechster.beimSprechen(dauer); } catch (e) { console.error(e); } }
       console.log(`🎙️  ${name}: ${naechster.text}`);
       return;
     }
@@ -138,7 +164,8 @@ export function erstelleModerator({ name, senden, stadt, apiKey, modell }) {
     if (jetzt - letzteRede > 28_000) {
       letzteRede = jetzt;
       const s = stadt();
-      sag(fuellen(zufall(SAETZE.leerlauf), s), 0);
+      const passend = SAETZE.leerlauf.filter(x => s.naechsteStadt || !x.includes('{naechsteStadt}'));
+      sag(fuellen(zufall(passend), s), 0);
     }
   }, 500);
 
@@ -176,7 +203,7 @@ export function erstelleModerator({ name, senden, stadt, apiKey, modell }) {
     const chat = liste.map(k =>
       `- ${k.name} (wohnt in: ${k.info.stufe}, ${k.info.punkte} Punkte${k.info.naechste ? `, noch ${k.info.fehlen} bis ${k.info.naechste}` : ''}): ${k.text}`
     ).join('\n');
-    const inhalt = `Stadt gerade: ${s.anzahl} Gebäude, ${s.zuschauer} Zuschauer live. Platz 1: ${s.top} (${s.topStufe}).
+    const inhalt = `Stadt ${s.stadtName} gerade: ${s.stadtStufe} mit ${s.anzahl} Einwohnern${s.naechsteStadt ? `, noch ${s.fehlenStadt} bis ${s.naechsteStadt}` : ''}, ${s.zuschauer} Zuschauer live. Platz 1: ${s.top} (${s.topStufe}).
 Was du zuletzt gesagt hast (nicht wiederholen):
 ${zuletztGesagt.map(z => '- ' + z).join('\n') || '- noch nichts'}
 
@@ -207,7 +234,10 @@ Such dir die interessanteste Nachricht aus${wichtig.length ? ' (Fragen haben Vor
   return {
     sag,
     get pausiert() { return pausiert; },
-    pause(an) { pausiert = an; if (an) warteschlange.length = 0; },
+    pause(an) {
+      pausiert = an;
+      if (an) { for (const x of warteschlange.splice(0)) if (x.beimSprechen) x.beimSprechen(0); }
+    },
 
     neuerBuerger(b) {
       neueLeute.push(b.name);
@@ -225,6 +255,20 @@ Such dir die interessanteste Nachricht aus${wichtig.length ? ' (Fragen haben Vor
         }
       }, 5000);
     },
+    zurueck(b, stufenName) {
+      zurueckLeute.push({ name: b.name, stufe: stufenName });
+      if (zurueckTimer) return;
+      zurueckTimer = setTimeout(() => {
+        zurueckTimer = null;
+        const liste = zurueckLeute.splice(0);
+        if (liste.length === 1) sag(fuellen(zufall(SAETZE.zurueckEiner), { namen: liste[0].name, stufe: liste[0].stufe }), 3);
+        else if (liste.length > 1) {
+          const gezeigt = liste.slice(0, 3).map(x => x.name), rest = liste.length - gezeigt.length;
+          const text = rest > 0 ? `${gezeigt.join(', ')} und ${rest} weitere` : `${gezeigt.slice(0, -1).join(', ')} und ${gezeigt.at(-1)}`;
+          sag(fuellen(zufall(SAETZE.zurueckViele), { namen: text }), 3);
+        }
+      }, 6000);
+    },
     aufstieg(b, stufenName, istMax) {
       if (istMax) return sag(fuellen(zufall(SAETZE.aufstiegMax), { name: b.name }), 4);
       if (b.stufe >= 6) return sag(fuellen(zufall(SAETZE.aufstiegGross), { name: b.name, stufe: stufenName }), 3);
@@ -232,7 +276,12 @@ Such dir die interessanteste Nachricht aus${wichtig.length ? ' (Fragen haben Vor
     },
     follow(b) { sag(fuellen(zufall(SAETZE.follow), { name: b.name }), 3); },
     teilen(b) { sag(fuellen(zufall(SAETZE.teilen), { name: b.name }), 2); },
-    geschenk(b, was) { sag(fuellen(zufall(SAETZE.geschenk), { name: b.name, was }), 4); },
+    geschenk(b, was) {
+      // Höchstens alle 10 Sekunden ein Dankeschön, sonst redet er nur noch über Geschenke
+      if (Date.now() - letzterDank < 10_000) return;
+      letzterDank = Date.now();
+      sag(fuellen(zufall(SAETZE.geschenk), { name: b.name, was }), 3);
+    },
     kommentar(name, text, info) {
       kandidaten.push({ name, text, info });
       if (kandidaten.length > 20) kandidaten.shift();
