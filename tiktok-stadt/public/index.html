@@ -248,6 +248,7 @@ if (P.get('ohneliste') === '1') document.getElementById('rang').classList.add('v
 const MIT_STIMME = P.get('stimme') === '1';
 const TAGESZYKLUS_MIN = P.has('tag') ? Number(P.get('tag')) : 8; // Minuten für Tag + Nacht (0 = immer Tag)
 const KATALOG = P.get('katalog') === '1';
+const FILM = P.get('film') === '1';
 
 // ============================================================ Zustand
 const leute = new Map();      // id -> Bewohner vom Server
@@ -821,8 +822,8 @@ function kameraZiel() {
     minX = Math.min(minX, sx - KW * .6); maxX = Math.max(maxX, sx + KW * .6);
     minY = Math.min(minY, sy - HOEHE[b.stufe] - 24); maxY = Math.max(maxY, sy + KH * .6);
   }
-  const oben = H * 0.30, unten = H * 0.27;
-  const verfuegbarW = W * 0.96, verfuegbarH = Math.max(100, H - oben - unten);
+  const oben = H * (FILM ? 0.26 : 0.30), unten = H * (FILM ? 0.2 : 0.27);
+  const verfuegbarW = W * (FILM ? 1.3 : 0.96), verfuegbarH = Math.max(100, H - oben - unten);
   let zoom = Math.min(2.2, verfuegbarW / (maxX - minX), verfuegbarH / (maxY - minY));
   let x = (minX + maxX) / 2, y = (minY + maxY) / 2;
   if (spot && performance.now() < spot.bis && leute.has(spot.id)) {
@@ -921,7 +922,8 @@ function feuerwerk(staerke) {
 
 // ============================================================ Hauptschleife
 let letzte = performance.now();
-function schleife(t) {
+function schleife() {
+  const t = performance.now();
   const dt = Math.min(50, t - letzte); letzte = t; ZEIT = t;
   const tz = P.get('nacht') === '1' ? { nacht: 1, abend: 0 } : tageszeit(Date.now());
   nacht = Math.round(tz.nacht * 40) / 40;
@@ -1070,7 +1072,29 @@ function katalogZeigen() {
   listeAktualisieren();
 }
 
-verbinden();
+// Film-Modus für Werbevideos: keine Verbindung, das Drehbuch steuert die Stadt (?film=1)
+if (FILM) {
+  STUFEN = ['Papierhütte', 'Holzhütte', 'Gartenhäuschen', 'Tiny House', 'Bungalow', 'Einfamilienhaus', 'Modernes Haus',
+    'Haus mit Pool', 'Designer-Villa', 'Luxusvilla', 'Prachtvilla', 'Riesen-Villa'].map((name, i) => ({ name, ab: [0, 2, 5, 9, 14, 21, 30, 42, 58, 80, 110, 150][i] }));
+  for (const sel of ['.kopf', '.ziel', '.rang', '.regeln', '#banner']) document.querySelector(sel).classList.add('versteckt');
+  zeigeStats({ status: 'demo', zuschauer: 0 });
+  const filmLeute = new Map();
+  let platz = 0;
+  const senden = (b, art, text, aufstieg) => bewohnerUpdate({ b: { ...b, stufenName: STUFEN[b.stufe].name }, art, text, aufstieg });
+  window.film = {
+    neu(name, farbe) {
+      const b = { id: name, name, platz: platz++, stufe: 0, punkte: 0, farbe: farbe || null };
+      filmLeute.set(name, b); senden(b, 'beitritt', '');
+    },
+    kommentar(name, text) { const b = filmLeute.get(name); b.punkte++; senden(b, 'kommentar', text); },
+    stufe(name, stufe) { const b = filmLeute.get(name); b.stufe = stufe; b.punkte = STUFEN[stufe].ab; senden(b, 'kommentar', '', true); },
+    follow(name) { const b = filmLeute.get(name); b.folgt = true; senden(b, 'follow', ''); },
+    sprich(text) { sprechen({ name: 'Bürgermeister Bo', text, dauer: 1800 + text.length * 45 }); },
+    feuerwerk(n) { feuerwerk(n || 2); }
+  };
+} else {
+  verbinden();
+}
 requestAnimationFrame(schleife);
 </script>
 </body>

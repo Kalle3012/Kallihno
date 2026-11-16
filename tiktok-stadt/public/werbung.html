@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live-Ankündigung</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Inter:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Werbevideo im Hochformat. Wird mit werbung/video-bauen.cjs Bild für Bild aufgenommen. */
+  :root { --u: min(1vh, 1.7778vw); --verlauf: linear-gradient(135deg, #8b5cf6, #ec4899); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0f172a; font-family: Inter, "Segoe UI", system-ui, sans-serif; color: #fff; }
+  iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
+  .schatten { position: fixed; left: 0; right: 0; top: 0; height: 42vh; pointer-events: none;
+    background: linear-gradient(rgba(15, 23, 42, .78), rgba(15, 23, 42, .45) 60%, rgba(15, 23, 42, 0)); }
+  .szene { position: fixed; left: calc(var(--u) * 3); right: calc(var(--u) * 3); top: calc(var(--u) * 6);
+    display: flex; flex-direction: column; align-items: center; text-align: center; gap: calc(var(--u) * 1.4);
+    opacity: 0; will-change: transform, opacity; }
+  .pille { display: inline-flex; align-items: center; gap: .5em; padding: .45em 1em; border-radius: 999px;
+    background: #ef4444; font-weight: 800; font-size: calc(var(--u) * 2.6); letter-spacing: .06em; box-shadow: 0 8px 24px rgba(239, 68, 68, .45); }
+  .pille i { width: .55em; height: .55em; border-radius: 50%; background: #fff; display: inline-block; }
+  .klein { font-weight: 800; font-size: calc(var(--u) * 3.1); text-shadow: 0 3px 14px rgba(0, 0, 0, .55); line-height: 1.2; }
+  .gross { font-family: Outfit, Inter, sans-serif; font-weight: 900; font-size: calc(var(--u) * 6.6); line-height: 1.02;
+    letter-spacing: -.02em; text-shadow: 0 5px 22px rgba(0, 0, 0, .5); }
+  .mark { display: inline-block; padding: 0 .22em .04em; border-radius: .18em; background: var(--verlauf); box-shadow: 0 8px 28px rgba(236, 72, 153, .5); }
+  .gold { display: inline-block; padding: 0 .22em .04em; border-radius: .18em; background: linear-gradient(135deg, #fde68a, #f59e0b); color: #422006; }
+  .regeln { display: grid; gap: calc(var(--u) * 1.1); width: 100%; }
+  .regel { display: flex; align-items: center; gap: calc(var(--u) * 1.4); padding: calc(var(--u) * 1.3) calc(var(--u) * 2);
+    border-radius: calc(var(--u) * 2.2); background: rgba(15, 23, 42, .72); border: 1px solid rgba(255, 255, 255, .16);
+    backdrop-filter: blur(10px); font-weight: 800; font-size: calc(var(--u) * 2.9); text-align: left; opacity: 0; }
+  .regel span:first-child { font-size: 1.25em; }
+  .regel b { margin-left: auto; color: #fde68a; white-space: nowrap; }
+  .cta { background: rgba(15, 23, 42, .75); border-radius: calc(var(--u) * 2.4); padding: calc(var(--u) * 1.6) calc(var(--u) * 2.2);
+    font-weight: 800; font-size: calc(var(--u) * 2.7); border: 1px solid rgba(255, 255, 255, .16); line-height: 1.35; }
+</style>
+</head>
+<body>
+<iframe id="stadt" src="/?film=1&tag=0"></iframe>
+<div class="schatten"></div>
+
+<div class="szene" data-von="0" data-bis="3.6">
+  <div class="pille"><i></i> MORGEN LIVE</div>
+  <div class="gross">Wir bauen eine <span class="mark">STADT</span></div>
+  <div class="klein">Und DU bekommst ein Haus 🏡</div>
+</div>
+
+<div class="szene" data-von="3.6" data-bis="7.6">
+  <div class="klein">Jeder Zuschauer startet in einer</div>
+  <div class="gross">📦 <span class="mark">Papierhütte</span></div>
+</div>
+
+<div class="szene" data-von="7.6" data-bis="12.6">
+  <div class="klein">💬 Jeder Kommentar im Chat =</div>
+  <div class="gross">dein Haus <span class="mark">WÄCHST</span></div>
+</div>
+
+<div class="szene" data-von="12.6" data-bis="16.6">
+  <div class="klein">Von der Papierhütte bis zur</div>
+  <div class="gross"><span class="gold">RIESEN-VILLA</span> 👑</div>
+</div>
+
+<div class="szene" data-von="16.6" data-bis="22">
+  <div class="gross" style="font-size:calc(var(--u)*4.6)">Die <span class="mark">Regeln</span></div>
+  <div class="regeln">
+    <div class="regel" data-ab="17.0"><span>💬</span>Kommentar<b>+1 Punkt</b></div>
+    <div class="regel" data-ab="17.6"><span>❤️</span>Folgen<b>+5 Punkte</b></div>
+    <div class="regel" data-ab="18.2"><span>🎁</span>Geschenke<b>Turbo</b></div>
+    <div class="regel" data-ab="18.8"><span>🧠</span>Quiz &amp; Bau-Rush<b>Bonus</b></div>
+    <div class="regel" data-ab="19.4"><span>🎩</span>Der Bürgermeister redet mit euch</div>
+  </div>
+</div>
+
+<div class="szene" data-von="22" data-bis="99">
+  <div class="pille"><i></i> LIVE</div>
+  <div class="gross"><span class="mark">MORGEN MITTAG</span></div>
+  <div class="klein">Dienstag, 17.11.</div>
+  <div class="cta">🔔 Folg mir, damit du's nicht verpasst<br>und schreib <span style="color:#fde68a">„Ich bin dabei“</span> 👇</div>
+</div>
+
+<script>
+const DAUER = 27; // Sekunden
+window.DAUER = DAUER;
+const iframe = document.getElementById('stadt');
+let start = null;
+
+// Drehbuch für die Stadt: [Sekunde, Aktion]
+const leute = ['Lena', 'Max', 'Mia', 'Ben', 'Emma', 'Paul', 'Sofia', 'Noah', 'Hannah', 'Elias', 'Clara', 'Jonas'];
+const D = [];
+leute.slice(0, 6).forEach((n, i) => D.push([0.3 + i * 0.35, f => f.neu(n)]));
+D.push([2.6, f => f.neu('Du?', '#ec4899')]);
+leute.slice(6).forEach((n, i) => D.push([3.9 + i * 0.45, f => f.neu(n)]));
+// Häuser wachsen
+const wachsen = [
+  [7.8, 'Lena', 1], [8.1, 'Max', 1], [8.4, 'Mia', 1], [8.7, 'Lena', 2], [9.0, 'Ben', 1], [9.3, 'Max', 2],
+  [9.6, 'Lena', 3], [9.9, 'Emma', 1], [10.2, 'Mia', 2], [10.5, 'Max', 3], [10.8, 'Lena', 4], [11.1, 'Paul', 2],
+  [11.4, 'Mia', 3], [11.7, 'Ben', 2], [12.0, 'Max', 4], [12.3, 'Sofia', 1],
+  [12.9, 'Lena', 5], [13.6, 'Lena', 7], [14.3, 'Lena', 9], [15.0, 'Lena', 11],
+  [17.2, 'Max', 6], [17.8, 'Mia', 5], [18.4, 'Emma', 3], [19.0, 'Max', 8], [19.6, 'Ben', 4], [20.2, 'Noah', 2],
+  [20.8, 'Mia', 7], [21.4, 'Paul', 4], [22.6, 'Du?', 1], [23.4, 'Du?', 2], [24.2, 'Du?', 3]
+];
+for (const [t, n, s] of wachsen) D.push([t, f => f.stufe(n, s)]);
+const kommentare = [[7.6, 'Lena', 'Bau mir ein Haus!'], [8.25, 'Max', 'hallo 👋'], [9.15, 'Mia', 'Ich will einen Pool'], [10.05, 'Ben', 'mehr mehr mehr 🔥'],
+  [11.25, 'Emma', 'Wie geht das?'], [16.9, 'Paul', 'wow die Villa 😍'], [20.5, 'Hannah', 'Ich bin dabei!']];
+for (const [t, n, x] of kommentare) D.push([t, f => f.kommentar(n, x)]);
+D.push([15.1, f => f.feuerwerk(3)]);
+D.push([17.5, f => f.follow('Mia')]);
+D.push([18.1, f => f.follow('Max')]);
+D.push([1.0, f => f.sprich('Hallo! Morgen bauen wir zusammen eine Stadt!')]);
+D.push([8.2, f => f.sprich('Lena schreibt fleißig, schaut wie ihr Haus wächst!')]);
+D.push([16.8, f => f.sprich('Hallo! Ich bin Bürgermeister Bo. Ich rede die ganze Zeit mit euch!')]);
+D.push([22.2, f => f.sprich('Bis morgen Mittag! Deine Papierhütte steht schon bereit.')]);
+D.push([23.0, f => f.feuerwerk(2)]);
+D.sort((a, b) => a[0] - b[0]);
+
+const easeBack = x => { const c = 1.6; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const szenen = [...document.querySelectorAll('.szene')];
+
+function bild() {
+  const t = performance.now(); // nicht den rAF-Zeitstempel: so folgt die Aufnahme-Uhr
+  if (start === null) start = t;
+  const sek = (t - start) / 1000;
+  const f = iframe.contentWindow.film;
+  while (f && D.length && D[0][0] <= sek) D.shift()[1](f);
+
+  for (const el of szenen) {
+    const von = +el.dataset.von, bis = +el.dataset.bis;
+    if (sek < von || sek > bis) { el.style.opacity = 0; continue; }
+    const rein = Math.min(1, (sek - von) / 0.45), raus = Math.min(1, Math.max(0, (bis - sek) / 0.3));
+    el.style.opacity = Math.min(rein * 1.5, raus);
+    el.style.transform = `translateY(${(1 - Math.min(1, rein)) * -30}px) scale(${0.82 + 0.18 * easeBack(rein)})`;
+    for (const r of el.querySelectorAll('.regel')) {
+      const p = Math.min(1, Math.max(0, (sek - +r.dataset.ab) / 0.35));
+      r.style.opacity = p;
+      r.style.transform = `translateX(${(1 - easeBack(p)) * -60}px)`;
+    }
+  }
+  // Ab der Mitte pulsiert der Schriftzug "MORGEN MITTAG"
+  const cta = szenen.at(-1).querySelector('.mark');
+  if (sek > 22.5) cta.style.transform = `scale(${1 + Math.sin((sek - 22.5) * 5) * 0.04})`;
+  window.fertig = sek >= DAUER;
+  requestAnimationFrame(bild);
+}
+// Start: sofort im Browser, beim Aufnehmen erst wenn das Aufnahmeprogramm los() ruft
+window.los = () => { start = null; requestAnimationFrame(bild); };
+iframe.addEventListener('load', () => { if (!navigator.webdriver) window.los(); window.geladen = true; });
+</script>
+</body>
+</html>

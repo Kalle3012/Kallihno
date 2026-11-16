@@ -134,3 +134,9 @@ Weitere Ansicht-Optionen hinten an die Adresse: `?tag=0` (immer Tag), `?ohnelist
 - Am Anfang: „Jeder hier hat schon eine Papierhütte! Schreibt was, dann baut ihr.“
 - Die Top 3 vorlesen: „Nele hat schon eine Designer-Villa! Wer holt sie ein?“
 - Vor dem Bau-Rush ankündigen: „Gleich zählt jeder Kommentar doppelt!“
+
+## Werbevideo für den Live
+
+Fertiges Video: `marketing/videos/live-ankuendigung.mp4` (27 Sekunden, Hochformat, ohne Ton).
+Das Drehbuch steht in `public/werbung.html` (Texte, Datum, Ablauf). Nach Änderungen neu erzeugen mit
+`node werbung/video-bauen.cjs` (braucht ffmpeg). Zum Anschauen im Browser: `http://localhost:3000/werbung.html`.
