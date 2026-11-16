@@ -1,0 +1,15 @@
+{
+  "name": "tiktok-stadt",
+  "version": "1.0.0",
+  "description": "TikTok-Live-Spiel: Jeder Zuschauer bekommt ein Haus in der Stadt, Kommentare lassen es wachsen.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "demo": "node server.js --demo"
+  },
+  "dependencies": {
+    "tiktok-live-connector": "2.5.0",
+    "ws": "8.18.0"
+  }
+}

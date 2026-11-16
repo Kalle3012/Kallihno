@@ -75,3 +75,7 @@ Preis 12,90 €, abzüglich ca. 6,5 % Etsy-Transaktionsgebühr, ca. 4 % Zahlungs
 - `marketing/etsy-listing.md`: Titel, 13 Tags, Beschreibung und Preisstrategie
 - `marketing/tiktok-30-tage.md`: 30 Video-Ideen mit Hooks, Ablauf und Hashtags
 - `marketing/weitere-ideen.md`: Plan B/C und Produktideen zum Skalieren
+
+## Extra: TikTok-Live-Spiel „Zuschauer-Stadt“
+
+Im Ordner `tiktok-stadt/` liegt ein Programm für Livestreams: Jeder Zuschauer bekommt ein Haus, jeder Kommentar lässt es wachsen. Anleitung: `tiktok-stadt/ANLEITUNG.md`.

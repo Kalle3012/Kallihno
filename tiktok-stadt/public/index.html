@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zuschauer-Stadt</title>
+<style>
+  :root {
+    --text: #ffffff;
+    --panel: rgba(12, 18, 40, 0.62);
+    --accent: #ffd34d;
+    --pink: #ff4f8b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: linear-gradient(#3b82c4 0%, #8fc7f0 55%, #cfeeff 100%);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    color: var(--text);
+  }
+  body.durchsichtig { background: transparent; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+
+  .oben {
+    position: fixed; top: 0; left: 0; right: 0; padding: 2.2vh 3vw 0;
+    display: flex; flex-direction: column; align-items: center; gap: 1.2vh; pointer-events: none;
+  }
+  h1 {
+    margin: 0; font-size: clamp(22px, 4.6vh, 64px); font-weight: 900; letter-spacing: .5px;
+    text-shadow: 0 3px 0 rgba(0,0,0,.25), 0 0 18px rgba(0,0,0,.25);
+  }
+  .zahlen { display: flex; gap: 1.2vw; flex-wrap: wrap; justify-content: center; }
+  .zahl {
+    background: var(--panel); border-radius: 999px; padding: .5vh 1.6vh;
+    font-size: clamp(13px, 2vh, 28px); font-weight: 700; backdrop-filter: blur(4px);
+  }
+  .zahl b { color: var(--accent); }
+  .status-live { color: #ff6b6b; }
+
+  .rangliste {
+    position: fixed; top: 15vh; left: 2vw; width: min(36vw, 300px);
+    background: var(--panel); border-radius: 16px; padding: 1.2vh 1.4vh; backdrop-filter: blur(4px);
+    font-size: clamp(12px, 1.75vh, 24px);
+  }
+  .rangliste h2 { margin: 0 0 .6vh; font-size: 1.05em; color: var(--accent); }
+  .rangliste ol { margin: 0; padding-left: 1.4em; }
+  .rangliste li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.45; }
+  .rangliste li span { opacity: .75; font-size: .85em; }
+
+  .unten {
+    position: fixed; left: 0; right: 0; bottom: 0; padding: 0 3vw 2.4vh;
+    display: flex; flex-direction: column; gap: 1vh; align-items: stretch; pointer-events: none;
+  }
+  .feed { display: flex; flex-direction: column; gap: .7vh; align-items: flex-start; }
+  .eintrag {
+    background: var(--panel); border-radius: 14px; padding: .7vh 1.4vh; max-width: 92vw;
+    font-size: clamp(13px, 2vh, 28px); backdrop-filter: blur(4px);
+    animation: rein .35s ease-out; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .eintrag b { color: var(--accent); }
+  .eintrag.gross { background: linear-gradient(90deg, rgba(255,79,139,.85), rgba(255,180,60,.85)); font-weight: 700; }
+  .eintrag.gross b { color: #fff; }
+  @keyframes rein { from { transform: translateX(-30px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  .anleitung {
+    align-self: center; text-align: center; background: var(--pink); border-radius: 18px;
+    padding: 1vh 2.2vh; font-size: clamp(14px, 2.3vh, 32px); font-weight: 800;
+    box-shadow: 0 4px 0 rgba(0,0,0,.2);
+  }
+  .anleitung small { display: block; font-weight: 600; font-size: .72em; opacity: .95; margin-top: .3vh; }
+
+  .hinweis {
+    position: fixed; inset: 0; display: grid; place-items: center; pointer-events: none;
+    font-size: clamp(16px, 3vh, 36px); font-weight: 800; text-align: center; padding: 6vw;
+    text-shadow: 0 2px 8px rgba(0,0,0,.4);
+  }
+  .versteckt { display: none !important; }
+</style>
+</head>
+<body>
+<canvas id="stadt"></canvas>
+
+<div class="oben">
+  <h1>🏙️ Zuschauer-Stadt</h1>
+  <div class="zahlen">
+    <div class="zahl">👀 <b id="zZuschauer">0</b> live</div>
+    <div class="zahl">🏠 <b id="zHaeuser">0</b> Gebäude</div>
+    <div class="zahl" id="zStatus">verbinde …</div>
+  </div>
+</div>
+
+<div class="rangliste">
+  <h2>🏆 Höchste Gebäude</h2>
+  <ol id="liste"></ol>
+</div>
+
+<div class="hinweis" id="hinweis">Warte auf die ersten Zuschauer …</div>
+
+<div class="unten">
+  <div class="feed" id="feed"></div>
+  <div class="anleitung">💬 Schreib in den Chat – dein Haus wächst!
+    <small>Folgen = Bonus ❤️ · Geschenke = Turbo 🎁 · „!farbe pink“ färbt dein Haus</small>
+  </div>
+</div>
+
+<script>
+// ============================================================ Einstellungen über die URL
+const P = new URLSearchParams(location.search);
+if (P.get('durchsichtig') === '1') document.body.classList.add('durchsichtig');
+if (P.get('ohneliste') === '1') document.querySelector('.rangliste').classList.add('versteckt');
+
+// ============================================================ Zustand
+const leute = new Map();      // id -> Bewohner vom Server
+const anim = new Map();       // id -> { hoehe, ziel, blitz, geboren }
+let stufenNamen = [];
+const effekte = [];           // schwebende Texte + Konfetti
+
+// ============================================================ Verbindung zum Programm
+function verbinden() {
+  const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.t === 'alles') {
+      stufenNamen = m.stufen;
+      leute.clear();
+      for (const b of m.einwohner) { leute.set(b.id, b); anim.set(b.id, { hoehe: zielHoehe(b), blitz: 0, geboren: 0 }); }
+      zeigeStats(m.stats); listeAktualisieren();
+    } else if (m.t === 'stats') {
+      zeigeStats(m.stats);
+    } else if (m.t === 'bewohner') {
+      bewohnerUpdate(m);
+    }
+  };
+  ws.onclose = () => { document.getElementById('zStatus').textContent = '⚠️ Programm getrennt'; setTimeout(verbinden, 2000); };
+}
+verbinden();
+
+function zeigeStats(s) {
+  document.getElementById('zZuschauer').textContent = s.zuschauer.toLocaleString('de-DE');
+  const st = { live: '<span class="status-live">● LIVE</span>', demo: '🧪 Demo', wartet: '⏳ warte auf Live', verbinde: 'verbinde …', getrennt: '⚠️ neu verbinden …', beendet: 'Live beendet', fehler: '⚠️ Verbindungsfehler', startet: 'startet …' };
+  document.getElementById('zStatus').innerHTML = st[s.status] || s.status;
+}
+
+function bewohnerUpdate(m) {
+  const b = m.b;
+  const warNeu = !leute.has(b.id);
+  leute.set(b.id, b);
+  let a = anim.get(b.id);
+  if (!a) { a = { hoehe: 0, blitz: 0, geboren: performance.now() }; anim.set(b.id, a); }
+  a.letzteAktion = performance.now();
+
+  if (m.art === 'kommentar') a.blitz = 1;
+  if (m.aufstieg) {
+    a.blitz = 1.6;
+    konfetti(b, b.stufe >= 8 ? 70 : 30);
+    schwebText(b, '⬆ ' + b.stufenName);
+    feed(`<b>${esc(b.name)}</b> hat jetzt: ${esc(b.stufenName)} 🎉`, b.stufe >= 5);
+  } else if (m.art === 'beitritt' && warNeu) {
+    feed(`👋 <b>${esc(b.name)}</b> bekommt ein Grundstück`);
+  } else if (m.art === 'follow') {
+    feed(`❤️ <b>${esc(b.name)}</b> folgt jetzt! +Bonus`, true); konfetti(b, 25);
+  } else if (m.art === 'geschenk') {
+    feed(`🎁 <b>${esc(b.name)}</b> ${esc(m.text)}`, true); konfetti(b, 45);
+  } else if (m.art === 'teilen') {
+    feed(`🔁 <b>${esc(b.name)}</b> hat geteilt! +Bonus`);
+  } else if (m.art === 'kommentar') {
+    feed(`💬 <b>${esc(b.name)}</b>: ${esc(m.text)}`);
+  }
+  listeAktualisieren();
+}
+
+// ============================================================ Seitenleiste und Feed
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+const MAX_FEED = 5;
+function feed(html, gross) {
+  const el = document.createElement('div');
+  el.className = 'eintrag' + (gross ? ' gross' : '');
+  el.innerHTML = html;
+  const f = document.getElementById('feed');
+  f.appendChild(el);
+  while (f.children.length > MAX_FEED) f.firstChild.remove();
+}
+
+let listeGeplant = false;
+function listeAktualisieren() {
+  if (listeGeplant) return;
+  listeGeplant = true;
+  requestAnimationFrame(() => {
+    listeGeplant = false;
+    const top = [...leute.values()].sort((a, b) => b.punkte - a.punkte || a.platz - b.platz).slice(0, 5);
+    document.getElementById('liste').innerHTML = top.map(b =>
+      `<li>${esc(b.name)} <span>– ${esc(b.stufenName)}</span></li>`).join('') || '<li><span>noch niemand</span></li>';
+    document.getElementById('zHaeuser').textContent = leute.size.toLocaleString('de-DE');
+    document.getElementById('hinweis').classList.toggle('versteckt', leute.size > 0);
+  });
+}
+
+// ============================================================ Stadtplan
+// Isometrisches Raster. Jede 3. Reihe/Spalte ist Straße, dazwischen 2×2-Blöcke mit Grundstücken.
+// Grundstücke werden vom Zentrum nach außen vergeben, so wächst die Stadt in alle Richtungen.
+const istStrasse = (x, y) => ((x % 3) + 3) % 3 === 0 || ((y % 3) + 3) % 3 === 0;
+const PLAETZE = (() => {
+  const l = [];
+  const R = 60;
+  for (let x = -R; x <= R; x++) for (let y = -R; y <= R; y++) if (!istStrasse(x, y)) l.push([x, y]);
+  // Zentrum ist der Block bei (1..2, 1..2)
+  l.sort((a, b) => (Math.hypot(a[0] - 1.5, a[1] - 1.5) - Math.hypot(b[0] - 1.5, b[1] - 1.5)) || (a[0] - b[0]) || (a[1] - b[1]));
+  return l;
+})();
+const platzVon = b => PLAETZE[b.platz % PLAETZE.length];
+
+// ============================================================ Gebäude-Aussehen pro Stufe
+// stockwerke, breite (0..1 vom Grundstück), dach: 'spitz' | 'flach' | 'zelt' | 'keins'
+const BAU = [
+  { st: 0,   br: .70, dach: 'keins' },   // Grundstück
+  { st: .8,  br: .50, dach: 'spitz' },   // Hütte
+  { st: 1,   br: .60, dach: 'spitz' },   // Häuschen
+  { st: 1.6, br: .66, dach: 'spitz' },   // Haus
+  { st: 2,   br: .76, dach: 'spitz' },   // Villa
+  { st: 3,   br: .70, dach: 'spitz' },   // Stadthaus
+  { st: 4.5, br: .76, dach: 'flach' },   // Mehrfamilienhaus
+  { st: 6.5, br: .78, dach: 'flach' },   // Bürogebäude
+  { st: 9,   br: .74, dach: 'flach' },   // Hochhaus
+  { st: 13,  br: .70, dach: 'antenne' }, // Wolkenkratzer
+  { st: 17,  br: .56, dach: 'turm' },    // Fernsehturm
+  { st: 22,  br: .72, dach: 'antenne' }  // Mega-Tower (gold)
+];
+const STOCK = 16; // Pixel pro Stockwerk bei Zoom 1
+const zielHoehe = b => BAU[Math.min(b.stufe, BAU.length - 1)].st * STOCK;
+
+function farbeVon(b) {
+  if (b.stufe >= 11) return '#f5c542';
+  if (b.farbe) return b.farbe;
+  let h = 0;
+  for (const c of b.id) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  const palette = ['#ef8a7a', '#f2b45a', '#f7dd72', '#9fd27a', '#6cc3b5', '#78a9e8', '#a98be0', '#e58cc2', '#d9a47c', '#c9d3dc'];
+  return palette[h % palette.length];
+}
+function schattieren(hex, f) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.min(255, Math.max(0, Math.round(((n >> 16) & 255) * f)));
+  const g = Math.min(255, Math.max(0, Math.round(((n >> 8) & 255) * f)));
+  const bl = Math.min(255, Math.max(0, Math.round((n & 255) * f)));
+  return `rgb(${r},${g},${bl})`;
+}
+
+// ============================================================ Zeichnen
+const cv = document.getElementById('stadt');
+const ctx = cv.getContext('2d');
+let W = 0, H = 0, DPR = 1;
+function groesse() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = innerWidth; H = innerHeight;
+  cv.width = W * DPR; cv.height = H * DPR;
+}
+addEventListener('resize', groesse); groesse();
+
+const KW = 64, KH = 32; // Kachelgröße bei Zoom 1
+const iso = (x, y) => [(x - y) * KW / 2, (x + y) * KH / 2];
+
+const kamera = { x: 0, y: 0, zoom: 1.6 };
+
+function kameraZiel() {
+  // Rahmen um alle Gebäude inkl. Höhe
+  let minX = -KW * 2, maxX = KW * 2, minY = -KH * 3, maxY = KH * 3;
+  for (const b of leute.values()) {
+    const [gx, gy] = platzVon(b);
+    const [sx, sy] = iso(gx, gy);
+    const h = (anim.get(b.id)?.hoehe || 0) + 30;
+    minX = Math.min(minX, sx - KW); maxX = Math.max(maxX, sx + KW);
+    minY = Math.min(minY, sy - h - KH); maxY = Math.max(maxY, sy + KH);
+  }
+  // Freier Bereich zwischen Kopfzeile und Feed
+  const oben = H * 0.15, unten = H * 0.30;
+  const verfuegbarW = W * 0.92, verfuegbarH = H - oben - unten;
+  const zoom = Math.min(2.6, verfuegbarW / (maxX - minX), verfuegbarH / (maxY - minY));
+  return { zoom, x: (minX + maxX) / 2, y: (minY + maxY) / 2, mitteY: oben + verfuegbarH / 2 };
+}
+
+function rauten(cx, cy, a, b) {
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - b); ctx.lineTo(cx + a, cy); ctx.lineTo(cx, cy + b); ctx.lineTo(cx - a, cy); ctx.closePath();
+}
+
+function boden(gx, gy) {
+  const [cx, cy] = iso(gx, gy);
+  rauten(cx, cy, KW / 2, KH / 2);
+  if (istStrasse(gx, gy)) {
+    ctx.fillStyle = '#5d6470'; ctx.fill();
+    // Mittelstreifen
+    const sx = ((gx % 3) + 3) % 3 === 0, sy = ((gy % 3) + 3) % 3 === 0;
+    if (sx !== sy) {
+      ctx.strokeStyle = 'rgba(255,230,120,.55)'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      if (sx) { const [ax, ay] = iso(gx, gy - .5), [bx, by] = iso(gx, gy + .5); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); }
+      else { const [ax, ay] = iso(gx - .5, gy), [bx, by] = iso(gx + .5, gy); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); }
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+  } else {
+    ctx.fillStyle = (gx + gy) % 2 ? '#7cc576' : '#74bd6e'; ctx.fill();
+  }
+}
+
+// Fenster auf einer Seitenwand: Ursprung o, Kante k (unten entlang), Höhe h
+function fenster(o, k, h, stockwerke, spalten, farbe) {
+  if (stockwerke < 1) return;
+  ctx.save();
+  ctx.transform(k[0], k[1], 0, -h, o[0], o[1]);
+  ctx.fillStyle = farbe;
+  const n = Math.floor(stockwerke);
+  for (let s = 0; s < n; s++) for (let c = 0; c < spalten; c++) {
+    const u = (c + .28) / spalten, v = (s + .32) / n;
+    ctx.fillRect(u, v, .44 / spalten, .42 / n);
+  }
+  ctx.restore();
+}
+
+function gebaeude(b, a, t) {
+  const [gx, gy] = platzVon(b);
+  const [cx, cy] = iso(gx, gy);
+  const bau = BAU[Math.min(b.stufe, BAU.length - 1)];
+  const geburt = a.geboren ? Math.min(1, (t - a.geboren) / 600) : 1;
+  const s = bau.br * (0.6 + 0.4 * geburt);
+  const ha = KW / 2 * s, hb = KH / 2 * s;
+  const H0 = a.hoehe;
+  const farbe = farbeVon(b);
+
+  // Schatten
+  ctx.fillStyle = 'rgba(0,0,0,.14)';
+  rauten(cx + 4, cy + 2, ha, hb); ctx.fill();
+
+  if (b.stufe === 0) {
+    // Grundstück: Zaun + Schild
+    rauten(cx, cy, ha, hb);
+    ctx.fillStyle = 'rgba(160,120,70,.35)'; ctx.fill();
+    ctx.strokeStyle = '#8a5a2b'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#8a5a2b'; ctx.fillRect(cx - 1, cy - 14, 2, 14);
+    ctx.fillStyle = farbe; ctx.fillRect(cx - 7, cy - 20, 14, 8);
+    return;
+  }
+
+  const W_ = [cx - ha, cy], S_ = [cx, cy + hb], E_ = [cx + ha, cy], N_ = [cx, cy - hb];
+  const up = p => [p[0], p[1] - H0];
+
+  const blitz = a.blitz > 0 ? a.blitz : 0;
+  const hell = 1 + blitz * 0.35;
+
+  // linke Wand
+  ctx.beginPath(); ctx.moveTo(...W_); ctx.lineTo(...S_); ctx.lineTo(...up(S_)); ctx.lineTo(...up(W_)); ctx.closePath();
+  ctx.fillStyle = schattieren(farbe, 0.82 * hell); ctx.fill();
+  // rechte Wand
+  ctx.beginPath(); ctx.moveTo(...S_); ctx.lineTo(...E_); ctx.lineTo(...up(E_)); ctx.lineTo(...up(S_)); ctx.closePath();
+  ctx.fillStyle = schattieren(farbe, 0.64 * hell); ctx.fill();
+
+  // Fenster
+  const stock = H0 / STOCK;
+  const fensterFarbe = b.stufe >= 6 ? 'rgba(200,235,255,.85)' : 'rgba(255,240,180,.9)';
+  const spalten = b.stufe >= 6 ? 3 : 2;
+  if (b.stufe <= 2) {
+    // Tür + ein Fenster
+    ctx.save(); ctx.transform(S_[0] - W_[0], S_[1] - W_[1], 0, -H0, W_[0], W_[1]);
+    ctx.fillStyle = '#6b4226'; ctx.fillRect(.55, 0, .22, .6);
+    ctx.fillStyle = fensterFarbe; ctx.fillRect(.15, .35, .25, .3);
+    ctx.restore();
+  } else {
+    fenster(W_, [S_[0] - W_[0], S_[1] - W_[1]], H0, Math.max(1, Math.round(stock)), spalten, fensterFarbe);
+    fenster(S_, [E_[0] - S_[0], E_[1] - S_[1]], H0, Math.max(1, Math.round(stock)), spalten, 'rgba(255,255,255,.35)');
+  }
+
+  // Dach
+  const nW = up(W_), nS = up(S_), nE = up(E_), nN = up(N_);
+  if (bau.dach === 'spitz') {
+    const spitze = [cx, cy - H0 - (12 + 6 * s)];
+    ctx.fillStyle = b.stufe >= 4 ? '#7a3b2e' : '#b5523b';
+    ctx.beginPath(); ctx.moveTo(...nW); ctx.lineTo(...nS); ctx.lineTo(...spitze); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = b.stufe >= 4 ? '#5e2c22' : '#8f3f2d';
+    ctx.beginPath(); ctx.moveTo(...nS); ctx.lineTo(...nE); ctx.lineTo(...spitze); ctx.closePath(); ctx.fill();
+  } else {
+    ctx.beginPath(); ctx.moveTo(...nN); ctx.lineTo(...nE); ctx.lineTo(...nS); ctx.lineTo(...nW); ctx.closePath();
+    ctx.fillStyle = schattieren(farbe, 1.08 * hell); ctx.fill();
+    if (bau.dach === 'antenne' || bau.dach === 'turm') {
+      const top = cy - H0;
+      ctx.strokeStyle = '#ddd'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(cx, top - (bau.dach === 'turm' ? 34 : 22)); ctx.stroke();
+      const blink = (Math.sin(t / 300) + 1) / 2;
+      ctx.fillStyle = `rgba(255,60,60,${0.4 + 0.6 * blink})`;
+      ctx.beginPath(); ctx.arc(cx, top - (bau.dach === 'turm' ? 34 : 22), 3, 0, Math.PI * 2); ctx.fill();
+      if (bau.dach === 'turm') {
+        ctx.fillStyle = '#e8eef5';
+        ctx.beginPath(); ctx.ellipse(cx, top - 14, 13, 6, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  // Follower-Fahne
+  if (b.folgt) {
+    const top = bau.dach === 'spitz' ? cy - H0 - (12 + 6 * s) : cy - H0;
+    const fx = bau.dach === 'spitz' ? cx : cx + ha * .5;
+    const fy = bau.dach === 'spitz' ? top : top + hb * .2;
+    ctx.strokeStyle = '#444'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx, fy - 16); ctx.stroke();
+    const wehen = Math.sin(t / 200 + b.platz) * 2;
+    ctx.fillStyle = '#ff4f8b';
+    ctx.beginPath(); ctx.moveTo(fx, fy - 16); ctx.lineTo(fx + 11, fy - 13 + wehen); ctx.lineTo(fx, fy - 9); ctx.closePath(); ctx.fill();
+  }
+
+  // Leuchten bei Aktion
+  if (blitz > 0) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, blitz) * 0.5;
+    ctx.fillStyle = '#fff6b0';
+    ctx.beginPath(); ctx.moveTo(...W_); ctx.lineTo(...S_); ctx.lineTo(...E_); ctx.lineTo(...nE); ctx.lineTo(...nN); ctx.lineTo(...nW); ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ============================================================ Effekte
+function weltPunkt(b) {
+  const [gx, gy] = platzVon(b);
+  const [cx, cy] = iso(gx, gy);
+  return [cx, cy - (anim.get(b.id)?.hoehe || 0) - 10];
+}
+function konfetti(b, n) {
+  const [x, y] = weltPunkt(b);
+  const farben = ['#ff4f8b', '#ffd34d', '#4fd1ff', '#7dff8a', '#ffffff'];
+  for (let i = 0; i < n; i++) {
+    effekte.push({ art: 'k', x, y, vx: (Math.random() - .5) * 3, vy: -Math.random() * 3.5 - 1, leben: 1, f: farben[i % farben.length] });
+  }
+}
+function schwebText(b, text) {
+  const [x, y] = weltPunkt(b);
+  effekte.push({ art: 't', x, y: y - 10, leben: 1, text });
+}
+
+// ============================================================ Hauptschleife
+let letzte = performance.now();
+function schleife(t) {
+  const dt = Math.min(50, t - letzte); letzte = t;
+
+  // Animation der Höhen
+  for (const [id, a] of anim) {
+    const b = leute.get(id); if (!b) continue;
+    const ziel = zielHoehe(b);
+    a.hoehe += (ziel - a.hoehe) * Math.min(1, dt / 350);
+    if (a.blitz > 0) a.blitz = Math.max(0, a.blitz - dt / 600);
+  }
+
+  // Kamera folgt weich
+  const z = kameraZiel();
+  const k = Math.min(1, dt / 700);
+  kamera.zoom += (z.zoom - kamera.zoom) * k;
+  kamera.x += (z.x - kamera.x) * k;
+  kamera.y += (z.y - kamera.y) * k;
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(DPR * kamera.zoom, 0, 0, DPR * kamera.zoom, DPR * (W / 2 - kamera.x * kamera.zoom), DPR * (z.mitteY - kamera.y * kamera.zoom));
+
+  // Sichtbarer Rasterbereich
+  let maxR = 4;
+  for (const b of leute.values()) { const [x, y] = platzVon(b); maxR = Math.max(maxR, Math.abs(x - 1.5) + 2, Math.abs(y - 1.5) + 2); }
+  maxR = Math.ceil(maxR) + 1;
+  const x0 = Math.floor(1.5 - maxR), x1 = Math.ceil(1.5 + maxR);
+
+  // Boden
+  for (let s = 2 * x0; s <= 2 * x1; s++) for (let x = x0; x <= x1; x++) { const y = s - x; if (y >= x0 && y <= x1) boden(x, y); }
+
+  // Gebäude von hinten nach vorne
+  const sortiert = [...leute.values()].map(b => { const [x, y] = platzVon(b); return { b, x, y }; })
+    .sort((p, q) => (p.x + p.y) - (q.x + q.y) || p.x - q.x);
+  for (const { b } of sortiert) gebaeude(b, anim.get(b.id), t);
+
+  // Namensschilder
+  namen(sortiert, t);
+
+  // Effekte
+  for (let i = effekte.length - 1; i >= 0; i--) {
+    const e = effekte[i];
+    if (e.art === 'k') {
+      e.x += e.vx * dt / 16; e.y += e.vy * dt / 16; e.vy += 0.12 * dt / 16; e.leben -= dt / 1400;
+      ctx.globalAlpha = Math.max(0, e.leben); ctx.fillStyle = e.f; ctx.fillRect(e.x, e.y, 3, 3);
+    } else {
+      e.y -= 0.5 * dt / 16; e.leben -= dt / 2200;
+      ctx.globalAlpha = Math.max(0, Math.min(1, e.leben * 2));
+      const gr = 15 / Math.max(.6, kamera.zoom) * 1.6;
+      ctx.font = `900 ${gr}px Segoe UI, system-ui, sans-serif`; ctx.textAlign = 'center';
+      ctx.lineWidth = gr / 4; ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.strokeText(e.text, e.x, e.y);
+      ctx.fillStyle = '#ffd34d'; ctx.fillText(e.text, e.x, e.y);
+    }
+    if (e.leben <= 0) effekte.splice(i, 1);
+  }
+  ctx.globalAlpha = 1;
+
+  requestAnimationFrame(schleife);
+}
+
+function namen(sortiert, t) {
+  // Schilder nach Wichtigkeit: wer gerade schreibt zuerst, dann die höchsten Gebäude.
+  // Ein Schild wird nur gezeichnet, wenn es kein anderes überdeckt.
+  const MAX_SCHILDER = 16;
+  const gr = Math.max(8, 13 / Math.max(.5, kamera.zoom) * 1.1);
+  ctx.font = `700 ${gr}px Segoe UI, system-ui, sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  const kandidaten = sortiert.map(({ b }) => {
+    const a = anim.get(b.id);
+    const aktiv = a.letzteAktion && t - a.letzteAktion < 6000;
+    return { b, aktiv, wert: aktiv ? 1e9 + a.letzteAktion : b.punkte };
+  }).sort((p, q) => q.wert - p.wert);
+  const belegt = [];
+  const zeichnen = [];
+  for (const k of kandidaten) {
+    if (zeichnen.length >= MAX_SCHILDER) break;
+    const b = k.b;
+    const [x, y] = weltPunkt(b);
+    const dach = BAU[Math.min(b.stufe, BAU.length - 1)].dach;
+    const extra = dach === 'spitz' ? 18 : dach === 'turm' ? 36 : dach === 'antenne' ? 26 : b.folgt ? 16 : 6;
+    const ty = y - extra + (b.stufe === 0 ? -8 : 0);
+    const w = ctx.measureText(b.name).width + gr * .8, h = gr * 1.35;
+    const r = { x: x - w / 2, y: ty - gr * 1.25, w, h };
+    if (belegt.some(o => r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h)) continue;
+    belegt.push(r);
+    zeichnen.push({ ...k, r, x, ty });
+  }
+  // Wichtigste zuletzt, damit sie oben liegen
+  for (const z of zeichnen.reverse()) {
+    ctx.fillStyle = z.aktiv ? 'rgba(255,79,139,.92)' : 'rgba(12,18,40,.72)';
+    rundesRechteck(z.r.x, z.r.y, z.r.w, z.r.h, gr * .45); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillText(z.b.name, z.x, z.ty);
+  }
+}
+function rundesRechteck(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+requestAnimationFrame(schleife);
+</script>
+</body>
+</html>
