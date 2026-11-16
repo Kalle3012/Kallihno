@@ -1,4 +1,5 @@
-// Nimmt public/werbung.html Bild für Bild auf und baut daraus ein TikTok-Video (1080 × 1920, 30 fps, ohne Ton).
+// Nimmt public/werbung.html Bild für Bild auf und baut daraus ein TikTok-Video (1080 × 1920, 30 fps).
+// Ton (Sprecher + Musik) vorher mit werbung/ton-bauen.py erzeugen.
 // Aufruf:  node werbung/video-bauen.cjs [ziel.mp4]
 // Braucht: Playwright mit Chromium und ffmpeg.
 const http = require('node:http');
@@ -9,10 +10,11 @@ const { execFileSync } = require('node:child_process');
 const { chromium } = require('playwright');
 
 const PUBLIC = path.join(__dirname, '..', 'public');
+const TON = path.join(__dirname, 'ton');
 const ZIEL = path.resolve(process.argv[2] || path.join(__dirname, '..', '..', 'marketing', 'videos', 'live-ankuendigung.mp4'));
 const FPS = 30;
 
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json' };
 const server = http.createServer((req, res) => {
   const p = new URL(req.url, 'http://x').pathname;
   const datei = path.join(PUBLIC, p === '/' ? 'index.html' : path.normalize(p));
@@ -49,8 +51,22 @@ const server = http.createServer((req, res) => {
   server.close();
 
   fs.mkdirSync(path.dirname(ZIEL), { recursive: true });
+  const stumm = path.join(bilder, 'stumm.mp4');
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(bilder, '%05d.jpg'),
-    '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', ZIEL], { stdio: 'inherit' });
+    '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', stumm], { stdio: 'inherit' });
+
+  // Ton: Sprecher (Bürgermeister) + leise Musik, die unter der Stimme automatisch leiser wird
+  const sprecher = path.join(TON, 'sprecher.wav'), musik = path.join(TON, 'musik.wav');
+  if (fs.existsSync(sprecher) && fs.existsSync(musik)) {
+    const filter = '[1:a]aresample=44100,highpass=f=90,acompressor=threshold=-20dB:ratio=3:attack=5:release=90,volume=1.5,asplit=2[stimme][steuer];' +
+      '[2:a]aresample=44100,volume=0.28[m];[m][steuer]sidechaincompress=threshold=0.02:ratio=8:attack=15:release=350[musik];' +
+      '[stimme][musik]amix=inputs=2:duration=first:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11,aresample=44100[ton]';
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', stumm, '-i', sprecher, '-i', musik, '-filter_complex', filter,
+      '-map', '0:v', '-map', '[ton]', '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart', ZIEL], { stdio: 'inherit' });
+  } else {
+    console.log('Kein Ton gefunden (werbung/ton/*.wav) – Video bleibt stumm. Erst werbung/ton-bauen.py ausführen.');
+    fs.copyFileSync(stumm, ZIEL);
+  }
   fs.rmSync(bilder, { recursive: true, force: true });
   console.log('Fertig:', ZIEL);
 })().catch(e => { console.error(e); process.exit(1); });

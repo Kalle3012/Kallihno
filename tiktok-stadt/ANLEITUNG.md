@@ -137,6 +137,11 @@ Weitere Ansicht-Optionen hinten an die Adresse: `?tag=0` (immer Tag), `?ohnelist
 
 ## Werbevideo für den Live
 
-Fertiges Video: `marketing/videos/live-ankuendigung.mp4` (27 Sekunden, Hochformat, ohne Ton).
-Das Drehbuch steht in `public/werbung.html` (Texte, Datum, Ablauf). Nach Änderungen neu erzeugen mit
-`node werbung/video-bauen.cjs` (braucht ffmpeg). Zum Anschauen im Browser: `http://localhost:3000/werbung.html`.
+Fertiges Video: `marketing/videos/live-ankuendigung.mp4` (50 Sekunden, Hochformat, mit Ton).
+Bürgermeister Bo erklärt darin mit Computerstimme den Ablauf, dazu läuft leise, selbst erzeugte Musik.
+
+Ändern und neu bauen:
+1. Gesprochenen Text in `werbung/sprechertext.json` ändern, Bildtexte und Datum in `public/werbung.html`.
+2. Ton erzeugen: `python3 werbung/ton-bauen.py --piper <piper> --stimme <de-thorsten-low.onnx>`
+   (Piper: `pip install piper-tts`; Stimme: `voice-de-thorsten-low.tar.gz` von github.com/rhasspy/piper, Release v0.0.2)
+3. Video erzeugen: `node werbung/video-bauen.cjs` (braucht ffmpeg)

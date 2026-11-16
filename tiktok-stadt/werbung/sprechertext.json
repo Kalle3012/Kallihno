@@ -1,0 +1,32 @@
+{
+  "_hinweis": "Was Bürgermeister Bo im Werbevideo sagt. Eine Liste pro Szene, ein Eintrag pro Satz. 'text' steht in der Sprechblase, 'aussprache' (optional) bekommt die Computerstimme, damit englische Wörter richtig klingen.",
+  "szenen": [
+    [
+      { "text": "Hallo! Morgen Mittag geht's hier live, und wir bauen zusammen eine Stadt!", "aussprache": "Hallo! Morgen Mittag gehts hier leif, und wir bauen zusammen eine Stadt!" },
+      { "text": "Ich bin Bürgermeister Bo und erkläre euch, wie es läuft." }
+    ],
+    [
+      { "text": "Jeder, der in den Live kommt, bekommt sofort ein eigenes Haus.", "aussprache": "Jeder, der in den Leif kommt, bekommt sofort ein eigenes Haus." },
+      { "text": "Am Anfang ist das nur eine kleine Papierhütte." }
+    ],
+    [
+      { "text": "Mit jedem Kommentar, den du schreibst, wächst dein Haus." },
+      { "text": "Holzhütte, Bungalow, Haus mit Pool …", "aussprache": "Holzhütte, Bungalo, Haus mit Pool," }
+    ],
+    [
+      { "text": "… bis hoch zur riesigen Villa mit Palmen und Hubschrauber-Landeplatz!", "aussprache": "bis hoch zur riesigen Villa, mit Palmen und Hubschrauber Landeplatz!" }
+    ],
+    [
+      { "text": "Die Regeln: Jeder Kommentar gibt einen Punkt." },
+      { "text": "Folgen gibt fünf Bonuspunkte." },
+      { "text": "Geschenke geben richtig Turbo." },
+      { "text": "Zwischendurch gibt es Quiz-Fragen und den Bau-Rush, da zählt jeder Kommentar doppelt.", "aussprache": "Zwischendurch gibt es Kwiss Fragen und den Bau Rasch. Da zählt jeder Kommentar doppelt." },
+      { "text": "Und ich rede die ganze Zeit mit euch!" }
+    ],
+    [
+      { "text": "Also: Morgen Mittag, am Dienstag!" },
+      { "text": "Folgt dem Kanal, damit ihr es nicht verpasst." },
+      { "text": "Und schreibt jetzt schon „Ich bin dabei“ in die Kommentare!", "aussprache": "Und schreibt jetzt schon: Ich bin dabei, in die Kommentare!" }
+    ]
+  ]
+}

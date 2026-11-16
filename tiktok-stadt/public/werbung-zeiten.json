@@ -1,0 +1,116 @@
+{
+ "dauer": 50.296,
+ "szenen": [
+  {
+   "von": 0.0,
+   "bis": 8.798,
+   "saetze": [
+    {
+     "start": 0.4,
+     "dauer": 4.116,
+     "text": "Hallo! Morgen Mittag geht's hier live, und wir bauen zusammen eine Stadt!"
+    },
+    {
+     "start": 4.816,
+     "dauer": 3.232,
+     "text": "Ich bin Bürgermeister Bo und erkläre euch, wie es läuft."
+    }
+   ]
+  },
+  {
+   "von": 8.798,
+   "bis": 15.768,
+   "saetze": [
+    {
+     "start": 8.798,
+     "dauer": 3.472,
+     "text": "Jeder, der in den Live kommt, bekommt sofort ein eigenes Haus."
+    },
+    {
+     "start": 12.57,
+     "dauer": 2.448,
+     "text": "Am Anfang ist das nur eine kleine Papierhütte."
+    }
+   ]
+  },
+  {
+   "von": 15.768,
+   "bis": 21.906,
+   "saetze": [
+    {
+     "start": 15.768,
+     "dauer": 2.8,
+     "text": "Mit jedem Kommentar, den du schreibst, wächst dein Haus."
+    },
+    {
+     "start": 18.868,
+     "dauer": 2.288,
+     "text": "Holzhütte, Bungalow, Haus mit Pool …"
+    }
+   ]
+  },
+  {
+   "von": 21.906,
+   "bis": 26.24,
+   "saetze": [
+    {
+     "start": 21.906,
+     "dauer": 3.584,
+     "text": "… bis hoch zur riesigen Villa mit Palmen und Hubschrauber-Landeplatz!"
+    }
+   ]
+  },
+  {
+   "von": 26.24,
+   "bis": 40.018,
+   "saetze": [
+    {
+     "start": 26.24,
+     "dauer": 2.432,
+     "text": "Die Regeln: Jeder Kommentar gibt einen Punkt."
+    },
+    {
+     "start": 28.972,
+     "dauer": 1.584,
+     "text": "Folgen gibt fünf Bonuspunkte."
+    },
+    {
+     "start": 30.856,
+     "dauer": 1.44,
+     "text": "Geschenke geben richtig Turbo."
+    },
+    {
+     "start": 32.596,
+     "dauer": 4.516,
+     "text": "Zwischendurch gibt es Quiz-Fragen und den Bau-Rush, da zählt jeder Kommentar doppelt."
+    },
+    {
+     "start": 37.412,
+     "dauer": 1.856,
+     "text": "Und ich rede die ganze Zeit mit euch!"
+    }
+   ]
+  },
+  {
+   "von": 40.018,
+   "bis": 51.296,
+   "saetze": [
+    {
+     "start": 40.018,
+     "dauer": 2.304,
+     "text": "Also: Morgen Mittag, am Dienstag!"
+    },
+    {
+     "start": 42.622,
+     "dauer": 2.096,
+     "text": "Folgt dem Kanal, damit ihr es nicht verpasst."
+    },
+    {
+     "start": 45.018,
+     "dauer": 2.928,
+     "text": "Und schreibt jetzt schon „Ich bin dabei“ in die Kommentare!"
+    }
+   ]
+  }
+ ]
+}

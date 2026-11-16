@@ -175,7 +175,7 @@ function bewohnerHolen(user) {
 const rushAktiv = () => Date.now() < spiel.rushBis;
 
 // ---------------------------------------------------------------- Webserver + Verbindung zum Overlay
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json' };
 const PUBLIC = path.join(hier, 'public');
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');

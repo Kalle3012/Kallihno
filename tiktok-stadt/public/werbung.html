@@ -78,42 +78,60 @@
 </div>
 
 <script>
-const DAUER = 27; // Sekunden
-window.DAUER = DAUER;
+// Zeiten kommen aus werbung-zeiten.json (von werbung/ton-bauen.py, passend zur Sprecherstimme).
+// Ohne die Datei gelten die alten Standardzeiten (stummes Video, 27 Sekunden).
+const STANDARD = [[0, 3.6], [3.6, 7.6], [7.6, 12.6], [12.6, 16.6], [16.6, 22], [22, 27]];
 const iframe = document.getElementById('stadt');
-let start = null;
+const szenen = [...document.querySelectorAll('.szene')];
+let start = null, D = [], zeiten = null, DAUER = 27;
 
-// Drehbuch für die Stadt: [Sekunde, Aktion]
-const leute = ['Lena', 'Max', 'Mia', 'Ben', 'Emma', 'Paul', 'Sofia', 'Noah', 'Hannah', 'Elias', 'Clara', 'Jonas'];
-const D = [];
-leute.slice(0, 6).forEach((n, i) => D.push([0.3 + i * 0.35, f => f.neu(n)]));
-D.push([2.6, f => f.neu('Du?', '#ec4899')]);
-leute.slice(6).forEach((n, i) => D.push([3.9 + i * 0.45, f => f.neu(n)]));
-// Häuser wachsen
-const wachsen = [
-  [7.8, 'Lena', 1], [8.1, 'Max', 1], [8.4, 'Mia', 1], [8.7, 'Lena', 2], [9.0, 'Ben', 1], [9.3, 'Max', 2],
-  [9.6, 'Lena', 3], [9.9, 'Emma', 1], [10.2, 'Mia', 2], [10.5, 'Max', 3], [10.8, 'Lena', 4], [11.1, 'Paul', 2],
-  [11.4, 'Mia', 3], [11.7, 'Ben', 2], [12.0, 'Max', 4], [12.3, 'Sofia', 1],
-  [12.9, 'Lena', 5], [13.6, 'Lena', 7], [14.3, 'Lena', 9], [15.0, 'Lena', 11],
-  [17.2, 'Max', 6], [17.8, 'Mia', 5], [18.4, 'Emma', 3], [19.0, 'Max', 8], [19.6, 'Ben', 4], [20.2, 'Noah', 2],
-  [20.8, 'Mia', 7], [21.4, 'Paul', 4], [22.6, 'Du?', 1], [23.4, 'Du?', 2], [24.2, 'Du?', 3]
-];
-for (const [t, n, s] of wachsen) D.push([t, f => f.stufe(n, s)]);
-const kommentare = [[7.6, 'Lena', 'Bau mir ein Haus!'], [8.25, 'Max', 'hallo 👋'], [9.15, 'Mia', 'Ich will einen Pool'], [10.05, 'Ben', 'mehr mehr mehr 🔥'],
-  [11.25, 'Emma', 'Wie geht das?'], [16.9, 'Paul', 'wow die Villa 😍'], [20.5, 'Hannah', 'Ich bin dabei!']];
-for (const [t, n, x] of kommentare) D.push([t, f => f.kommentar(n, x)]);
-D.push([15.1, f => f.feuerwerk(3)]);
-D.push([17.5, f => f.follow('Mia')]);
-D.push([18.1, f => f.follow('Max')]);
-D.push([1.0, f => f.sprich('Hallo! Morgen bauen wir zusammen eine Stadt!')]);
-D.push([8.2, f => f.sprich('Lena schreibt fleißig, schaut wie ihr Haus wächst!')]);
-D.push([16.8, f => f.sprich('Hallo! Ich bin Bürgermeister Bo. Ich rede die ganze Zeit mit euch!')]);
-D.push([22.2, f => f.sprich('Bis morgen Mittag! Deine Papierhütte steht schon bereit.')]);
-D.push([23.0, f => f.feuerwerk(2)]);
-D.sort((a, b) => a[0] - b[0]);
+// Drehbuch in "Standard-Sekunden"; wird auf die echten Szenenlängen umgerechnet
+function drehbuch() {
+  const roh = [];
+  const leute = ['Lena', 'Max', 'Mia', 'Ben', 'Emma', 'Paul', 'Sofia', 'Noah', 'Hannah', 'Elias', 'Clara', 'Jonas'];
+  leute.slice(0, 6).forEach((n, i) => roh.push([0.3 + i * 0.35, f => f.neu(n)]));
+  roh.push([2.6, f => f.neu('Du?', '#ec4899')]);
+  leute.slice(6).forEach((n, i) => roh.push([3.9 + i * 0.45, f => f.neu(n)]));
+  const wachsen = [
+    [7.8, 'Lena', 1], [8.1, 'Max', 1], [8.4, 'Mia', 1], [8.7, 'Lena', 2], [9.0, 'Ben', 1], [9.3, 'Max', 2],
+    [9.6, 'Lena', 3], [9.9, 'Emma', 1], [10.2, 'Mia', 2], [10.5, 'Max', 3], [10.8, 'Lena', 4], [11.1, 'Paul', 2],
+    [11.4, 'Mia', 3], [11.7, 'Ben', 2], [12.0, 'Max', 4], [12.3, 'Sofia', 1],
+    [12.9, 'Lena', 5], [13.6, 'Lena', 7], [14.3, 'Lena', 9], [15.0, 'Lena', 11],
+    [17.2, 'Max', 6], [17.8, 'Mia', 5], [18.4, 'Emma', 3], [19.0, 'Max', 8], [19.6, 'Ben', 4], [20.2, 'Noah', 2],
+    [20.8, 'Mia', 7], [21.4, 'Paul', 4], [22.6, 'Du?', 1], [23.4, 'Du?', 2], [24.2, 'Du?', 3]
+  ];
+  for (const [t, n, st] of wachsen) roh.push([t, f => f.stufe(n, st)]);
+  const kommentare = [[7.6, 'Lena', 'Bau mir ein Haus!'], [8.25, 'Max', 'hallo 👋'], [9.15, 'Mia', 'Ich will einen Pool'], [10.05, 'Ben', 'mehr mehr mehr 🔥'],
+    [11.25, 'Emma', 'Wie geht das?'], [16.9, 'Paul', 'wow die Villa 😍'], [20.5, 'Hannah', 'Ich bin dabei!'], [24.8, 'Sofia', 'Ich bin dabei! 🙋']];
+  for (const [t, n, x] of kommentare) roh.push([t, f => f.kommentar(n, x)]);
+  roh.push([15.1, f => f.feuerwerk(3)], [17.5, f => f.follow('Mia')], [18.1, f => f.follow('Max')], [23.0, f => f.feuerwerk(2)]);
+
+  // Standard-Sekunde -> echte Sekunde
+  const echt = t => {
+    const i = Math.max(0, STANDARD.findIndex(([v, b]) => t >= v && t < b));
+    const [v, b] = STANDARD[i], [nv, nb] = [+szenen[i].dataset.von, Math.min(+szenen[i].dataset.bis, DAUER)];
+    return nv + (t - v) * (nb - nv) / (b - v);
+  };
+  D = roh.map(([t, a]) => [echt(t), a]);
+  // Sätze des Bürgermeisters genau dann, wenn er sie sagt
+  if (zeiten) for (const sz of zeiten.szenen) for (const satz of sz.saetze) D.push([satz.start, f => f.sprich(satz.text, satz.dauer * 1000)]);
+  else D.push([1.0, f => f.sprich('Hallo! Morgen bauen wir zusammen eine Stadt!')]);
+  D.sort((a, b) => a[0] - b[0]);
+}
+
+function zeitenAnwenden() {
+  if (zeiten) {
+    DAUER = zeiten.dauer;
+    zeiten.szenen.forEach((sz, i) => { szenen[i].dataset.von = sz.von; szenen[i].dataset.bis = sz.bis; });
+    // Regeln erscheinen, wenn der Bürgermeister sie ausspricht
+    const regeln = szenen[4].querySelectorAll('.regel');
+    zeiten.szenen[4].saetze.forEach((satz, i) => { if (regeln[i]) regeln[i].dataset.ab = satz.start + 0.15; });
+  }
+  window.DAUER = DAUER;
+  drehbuch();
+}
 
 const easeBack = x => { const c = 1.6; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
-const szenen = [...document.querySelectorAll('.szene')];
 
 function bild() {
   const t = performance.now(); // nicht den rAF-Zeitstempel: so folgt die Aufnahme-Uhr
@@ -134,15 +152,18 @@ function bild() {
       r.style.transform = `translateX(${(1 - easeBack(p)) * -60}px)`;
     }
   }
-  // Ab der Mitte pulsiert der Schriftzug "MORGEN MITTAG"
-  const cta = szenen.at(-1).querySelector('.mark');
-  if (sek > 22.5) cta.style.transform = `scale(${1 + Math.sin((sek - 22.5) * 5) * 0.04})`;
+  // In der letzten Szene pulsiert der Schriftzug "MORGEN MITTAG"
+  const letzte = +szenen.at(-1).dataset.von + 0.5;
+  if (sek > letzte) szenen.at(-1).querySelector('.mark').style.transform = `scale(${1 + Math.sin((sek - letzte) * 5) * 0.04})`;
   window.fertig = sek >= DAUER;
   requestAnimationFrame(bild);
 }
+
 // Start: sofort im Browser, beim Aufnehmen erst wenn das Aufnahmeprogramm los() ruft
-window.los = () => { start = null; requestAnimationFrame(bild); };
-iframe.addEventListener('load', () => { if (!navigator.webdriver) window.los(); window.geladen = true; });
+window.los = () => { start = null; zeitenAnwenden(); requestAnimationFrame(bild); };
+const zeitenGeladen = fetch('werbung-zeiten.json').then(r => r.ok ? r.json() : null).catch(() => null).then(z => { zeiten = z; });
+const stadtGeladen = new Promise(r => iframe.addEventListener('load', r));
+Promise.all([zeitenGeladen, stadtGeladen]).then(() => { window.geladen = true; if (!navigator.webdriver) window.los(); });
 </script>
 </body>
 </html>

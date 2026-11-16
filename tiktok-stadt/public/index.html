@@ -1089,7 +1089,7 @@ if (FILM) {
     kommentar(name, text) { const b = filmLeute.get(name); b.punkte++; senden(b, 'kommentar', text); },
     stufe(name, stufe) { const b = filmLeute.get(name); b.stufe = stufe; b.punkte = STUFEN[stufe].ab; senden(b, 'kommentar', '', true); },
     follow(name) { const b = filmLeute.get(name); b.folgt = true; senden(b, 'follow', ''); },
-    sprich(text) { sprechen({ name: 'Bürgermeister Bo', text, dauer: 1800 + text.length * 45 }); },
+    sprich(text, dauer) { sprechen({ name: 'Bürgermeister Bo', text, dauer: dauer || 1800 + text.length * 45 }); },
     feuerwerk(n) { feuerwerk(n || 2); }
   };
 } else {
