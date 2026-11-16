@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stadt-Regie</title>
+<style>
+  :root {
+    --bg: #0f172a; --karte: #1e293b; --rand: #334155; --text: #f1f5f9; --leise: #94a3b8;
+    --verlauf: linear-gradient(135deg, #8b5cf6, #ec4899);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: Inter, "Segoe UI", system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 20px 16px 40px; display: grid; gap: 16px; }
+  h1 { margin: 0; font-size: 24px; }
+  p.hinweis { margin: 4px 0 0; color: var(--leise); font-size: 14px; line-height: 1.5; }
+  section { background: var(--karte); border: 1px solid var(--rand); border-radius: 16px; padding: 16px; display: grid; gap: 12px; }
+  h2 { margin: 0; font-size: 16px; }
+  .reihe { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  button {
+    border: 0; border-radius: 12px; padding: 12px 16px; font: inherit; font-weight: 700; cursor: pointer;
+    background: #334155; color: var(--text);
+  }
+  button.haupt { background: var(--verlauf); font-size: 18px; padding: 16px 22px; }
+  button:hover { filter: brightness(1.15); }
+  button.aktiv { outline: 2px solid #ec4899; }
+  select, input[type=text] {
+    font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--rand); background: #0b1220; color: var(--text);
+    min-width: 0; flex: 1;
+  }
+  label { color: var(--leise); font-size: 14px; display: flex; align-items: center; gap: 8px; }
+  input[type=range] { width: 140px; }
+  #protokoll { display: grid; gap: 8px; max-height: 340px; overflow: auto; }
+  .zeile { background: #0b1220; border-radius: 10px; padding: 10px 12px; font-size: 15px; line-height: 1.4; }
+  .zeile time { color: var(--leise); font-size: 12px; margin-right: 6px; }
+  .status { font-size: 14px; color: var(--leise); }
+  .an { color: #4ade80; font-weight: 700; }
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h1>🎙️ Stadt-Regie</h1>
+    <p class="hinweis">Diese Seite liest den Bürgermeister laut vor. Lass sie während des Lives in einem normalen Browser-Fenster
+      offen (Chrome oder Edge) und nimm den Computer-Ton in TikTok LIVE Studio / OBS mit auf.</p>
+  </div>
+
+  <section>
+    <h2>Stimme</h2>
+    <div class="reihe">
+      <button class="haupt" id="tonAn">🔊 Stimme einschalten</button>
+      <span class="status" id="tonStatus">Stimme ist aus</span>
+    </div>
+    <div class="reihe">
+      <select id="stimme"></select>
+      <button id="probe">Probe</button>
+    </div>
+    <div class="reihe">
+      <label>Tempo <input type="range" id="tempo" min="0.7" max="1.4" step="0.05" value="1.05"></label>
+      <label>Lautstärke <input type="range" id="laut" min="0" max="1" step="0.05" value="1"></label>
+    </div>
+  </section>
+
+  <section>
+    <h2>Aktionen</h2>
+    <div class="reihe">
+      <button data-aktion="quiz">🧠 Quiz starten</button>
+      <button data-aktion="rush">🚧 Bau-Rush starten</button>
+      <button data-aktion="feuerwerk">🎆 Feuerwerk</button>
+      <button id="pause">⏸️ Bürgermeister pausieren</button>
+    </div>
+    <div class="reihe">
+      <input type="text" id="text" placeholder="Das soll der Bürgermeister sagen …" maxlength="300">
+      <button id="sagen">Sagen</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Was der Bürgermeister sagt</h2>
+    <div id="protokoll"><div class="zeile">Noch nichts gesagt.</div></div>
+  </section>
+</main>
+
+<script>
+let ws, tonAn = false, pausiert = false;
+const ausw = document.getElementById('stimme');
+
+function stimmenLaden() {
+  const liste = speechSynthesis.getVoices().filter(v => v.lang.toLowerCase().startsWith('de'));
+  const gemerkt = (() => { try { return localStorage.getItem('stimme'); } catch { return null; } })();
+  ausw.innerHTML = liste.map(v => `<option value="${v.name}">${v.name}</option>`).join('') || '<option>Keine deutsche Stimme gefunden</option>';
+  // Natürliche Stimmen bevorzugen (Edge: "Online (Natural)", Chrome: "Google Deutsch")
+  const beste = liste.find(v => v.name === gemerkt) || liste.find(v => /natural|online/i.test(v.name)) || liste.find(v => /google/i.test(v.name)) || liste[0];
+  if (beste) ausw.value = beste.name;
+}
+if ('speechSynthesis' in window) { stimmenLaden(); speechSynthesis.onvoiceschanged = stimmenLaden; }
+ausw.onchange = () => { try { localStorage.setItem('stimme', ausw.value); } catch {} };
+
+function vorlesen(text) {
+  if (!tonAn || !('speechSynthesis' in window)) return;
+  const u = new SpeechSynthesisUtterance(text.replace(/\p{Extended_Pictographic}/gu, ''));
+  u.lang = 'de-DE';
+  const v = speechSynthesis.getVoices().find(v => v.name === ausw.value);
+  if (v) u.voice = v;
+  u.rate = Number(document.getElementById('tempo').value);
+  u.volume = Number(document.getElementById('laut').value);
+  speechSynthesis.speak(u);
+}
+
+document.getElementById('tonAn').onclick = e => {
+  tonAn = !tonAn;
+  e.target.textContent = tonAn ? '🔇 Stimme ausschalten' : '🔊 Stimme einschalten';
+  document.getElementById('tonStatus').innerHTML = tonAn ? '<span class="an">Stimme ist an</span>' : 'Stimme ist aus';
+  if (tonAn) vorlesen('Hallo, ich bin bereit!'); else speechSynthesis.cancel();
+};
+document.getElementById('probe').onclick = () => { const war = tonAn; tonAn = true; vorlesen('Willkommen in unserer Stadt! Schreibt in den Chat, dann wächst euer Haus.'); tonAn = war; };
+
+function senden(o) { if (ws?.readyState === 1) ws.send(JSON.stringify({ t: 'regie', ...o })); }
+document.querySelectorAll('[data-aktion]').forEach(b => b.onclick = () => senden({ aktion: b.dataset.aktion }));
+document.getElementById('pause').onclick = () => senden({ aktion: 'pause', an: !pausiert });
+const sagen = () => { const f = document.getElementById('text'); if (f.value.trim()) { senden({ aktion: 'sagen', text: f.value.trim() }); f.value = ''; } };
+document.getElementById('sagen').onclick = sagen;
+document.getElementById('text').onkeydown = e => { if (e.key === 'Enter') sagen(); };
+
+function pauseAnzeigen() {
+  const b = document.getElementById('pause');
+  b.textContent = pausiert ? '▶️ Bürgermeister weiterreden lassen' : '⏸️ Bürgermeister pausieren';
+  b.classList.toggle('aktiv', pausiert);
+}
+
+let ersteZeile = true;
+function protokoll(text) {
+  const p = document.getElementById('protokoll');
+  if (ersteZeile) { p.innerHTML = ''; ersteZeile = false; }
+  const z = document.createElement('div');
+  z.className = 'zeile';
+  const t = document.createElement('time'); t.textContent = new Date().toLocaleTimeString('de-DE');
+  z.append(t, document.createTextNode(text));
+  p.prepend(z);
+  while (p.children.length > 60) p.lastChild.remove();
+}
+
+function verbinden() {
+  ws = new WebSocket('ws://' + location.host);
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.t === 'alles') { pausiert = m.moderator.pausiert; pauseAnzeigen(); }
+    if (m.t === 'moderator') { pausiert = m.pausiert; pauseAnzeigen(); }
+    if (m.t === 'sprich') { protokoll(m.text); vorlesen(m.text); }
+  };
+  ws.onclose = () => setTimeout(verbinden, 2000);
+}
+verbinden();
+</script>
+</body>
+</html>

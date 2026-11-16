@@ -78,4 +78,4 @@ Preis 12,90 €, abzüglich ca. 6,5 % Etsy-Transaktionsgebühr, ca. 4 % Zahlungs
 
 ## Extra: TikTok-Live-Spiel „Zuschauer-Stadt“
 
-Im Ordner `tiktok-stadt/` liegt ein Programm für Livestreams: Jeder Zuschauer bekommt ein Haus, jeder Kommentar lässt es wachsen. Anleitung: `tiktok-stadt/ANLEITUNG.md`.
+Im Ordner `tiktok-stadt/` liegt ein Programm für Livestreams: Jeder Zuschauer startet in einer Papierhütte und baut sie mit Kommentaren bis zur Riesen-Villa aus. Ein Bürgermeister redet dabei mit dem Chat. Anleitung: `tiktok-stadt/ANLEITUNG.md`.

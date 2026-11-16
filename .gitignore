@@ -3,3 +3,4 @@ tools/media/frames/
 __pycache__/
 tiktok-stadt/node_modules/
 tiktok-stadt/data/
+tiktok-stadt/einstellungen.json
