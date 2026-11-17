@@ -10,6 +10,7 @@
 // Regie:   http://localhost:3000/regie.html  (Stimme des Bürgermeisters + Knöpfe)
 
 import http from 'node:http';
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -796,6 +797,19 @@ function demoStarten() {
   }, tempo);
 }
 
+// Öffnet eine Seite im Browser, sobald das Programm bereit ist (Regie unter Windows in Edge: schönste Stimmen)
+function seiteOeffnen(url, inEdge) {
+  try {
+    const [befehl, argumente] = process.platform === 'win32'
+      ? ['cmd.exe', ['/d', '/s', '/c', `start "" ${inEdge ? 'msedge ' : ''}"${url}"`]]
+      : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
+    // windowsVerbatimArguments: die Anführungszeichen gehen unverändert an cmd (sonst würde Node sie maskieren)
+    const p = spawn(befehl, argumente, { detached: true, stdio: 'ignore', windowsHide: true, windowsVerbatimArguments: true });
+    p.on('error', () => console.log(`   Bitte im Browser öffnen: ${url}`));
+    p.unref();
+  } catch { console.log(`   Bitte im Browser öffnen: ${url}`); }
+}
+
 // ---------------------------------------------------------------- Los geht's
 laden();
 sitzung.stadtStufeStart = stadt.stufe;
@@ -808,6 +822,10 @@ server.listen(PORT, () => {
   console.log('\n🏙️  TikTok-Stadt läuft!');
   console.log(`   Stadt (für den Live):   http://localhost:${PORT}`);
   console.log(`   Regie + Stimme:         http://localhost:${PORT}/regie.html\n`);
+  if (args.includes('--oeffnen')) {
+    seiteOeffnen(`http://localhost:${PORT}`);
+    setTimeout(() => seiteOeffnen(`http://localhost:${PORT}/regie.html`, true), 1500);
+  }
   if (DEMO) { console.log('   DEMO-MODUS: erfundene Zuschauer\n'); demoStarten(); }
   else tiktokStarten().catch(e => { console.error('Konnte TikTok-Bibliothek nicht laden. Hast du "npm install" ausgeführt?\n', e.message); });
   automatischeSpiele();

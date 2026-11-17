@@ -17,9 +17,8 @@ if [ "$wahl" = "3" ]; then
   [ "$sicher" = "ja" ] || { echo "Abgebrochen. Starte mit der bisherigen Stadt."; wahl=1; }
 fi
 if [ "$wahl" = "2" ]; then
-  (sleep 2; open http://localhost:3000; open http://localhost:3000/regie.html) & node server.js --demo --neu; exit
+  node server.js --demo --neu --oeffnen; exit
 fi
 echo "Dein TikTok-Name ohne @ (einfach Enter drücken, wenn er in einstellungen.json steht)"
 read -rp "Name: " name
-(sleep 2; open http://localhost:3000; open http://localhost:3000/regie.html) &
-if [ "$wahl" = "3" ]; then node server.js $name --neu; else node server.js $name; fi
+if [ "$wahl" = "3" ]; then node server.js $name --neu --oeffnen; else node server.js $name --oeffnen; fi

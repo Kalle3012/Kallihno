@@ -30,9 +30,7 @@ if "%wahl%"=="3" if /i not "%sicher%"=="ja" (
   set wahl=1
 )
 if "%wahl%"=="2" (
-  start "" http://localhost:3000
-  start "" http://localhost:3000/regie.html
-  node server.js --demo --neu
+  node server.js --demo --neu --oeffnen
   pause
   exit /b
 )
@@ -40,11 +38,9 @@ set name=
 echo.
 echo Dein TikTok-Name ohne @ (einfach Enter druecken, wenn er in einstellungen.json steht)
 set /p name=Name: 
-start "" http://localhost:3000
-start "" http://localhost:3000/regie.html
 if "%wahl%"=="3" (
-  node server.js %name% --neu
+  node server.js %name% --neu --oeffnen
 ) else (
-  node server.js %name%
+  node server.js %name% --oeffnen
 )
 pause
